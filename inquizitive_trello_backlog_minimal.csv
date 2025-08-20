@@ -1,0 +1,65 @@
+Name,Description,List
+Epic 1 – User Authentication & Access,"Goal: Secure login/signup for faculty. Includes: login, signup, validation, forgot password.",Product Backlog
+Story: Faculty secure login,"As a faculty member, I want to securely log in so I can manage my classes.",Product Backlog
+Task: Design login & signup (UI/UX),Parent: Story: Faculty secure login,Product Backlog
+Task: Implement form validation (frontend),Parent: Story: Faculty secure login,Product Backlog
+Task: Integrate API for login/signup,Parent: Story: Faculty secure login,Product Backlog
+Task: Add forgot password functionality,Parent: Story: Faculty secure login,Product Backlog
+Epic 2 – Dashboard,Goal: Overview of classes with fast navigation.,Product Backlog
+Story: Faculty sees class overview,"As a faculty, I want to see an overview of my classes so I can quickly navigate.",Product Backlog
+Task: Design dashboard UI,Parent: Story: Faculty sees class overview,Product Backlog
+Task: Build 'Your Classes' section with cards,Parent: Story: Faculty sees class overview,Product Backlog
+Task: Add 'Generate class link' button,Parent: Story: Faculty sees class overview,Product Backlog
+Task: Make dashboard responsive (mobile/tablet),Parent: Story: Faculty sees class overview,Product Backlog
+Epic 3 – Class Management,"Goal: Create, edit, delete classes; manage students; generate join links.",Product Backlog
+Story: Create/edit/delete classes,"As a faculty, I want to create, edit, and delete classes.",Product Backlog
+Task: Create 'Add New Class' modal,Parent: Story: Create/edit/delete classes,Product Backlog
+Task: Integrate API for creating classes,Parent: Story: Create/edit/delete classes,Product Backlog
+Task: Add 'Manage Students' view per class,Parent: Story: Create/edit/delete classes,Product Backlog
+Task: Edit class details,Parent: Story: Create/edit/delete classes,Product Backlog
+Task: Delete class functionality,Parent: Story: Create/edit/delete classes,Product Backlog
+Task: Generate unique join links,Parent: Story: Create/edit/delete classes,Product Backlog
+Epic 4 – Student Registration,Goal: Students join class via link; faculty sees/removes students.,Product Backlog
+Story: Student joins via link,"As a student, I want to join a class via a link.",Product Backlog
+"Task: Build registration form (Name, Seat No, Email)",Parent: Story: Student joins via link,Product Backlog
+Task: Validate & save student data,Parent: Story: Student joins via link,Product Backlog
+Task: Display registered students to faculty,Parent: Story: Student joins via link,Product Backlog
+Task: Allow faculty to remove students,Parent: Story: Student joins via link,Product Backlog
+Epic 5 – Quiz Creation & Management,"Goal: Create quizzes, assign to class, view results.",Product Backlog
+Story: Faculty creates quizzes,"As a faculty, I want to create quizzes and assign them to my classes.",Product Backlog
+"Task: Create quiz form (title, description, questions, time limit)",Parent: Story: Faculty creates quizzes,Product Backlog
+"Task: Add question types (MCQ, True/False, Short Answer)",Parent: Story: Faculty creates quizzes,Product Backlog
+Task: Dynamic add/remove questions,Parent: Story: Faculty creates quizzes,Product Backlog
+Task: Save quiz data via API,Parent: Story: Faculty creates quizzes,Product Backlog
+Task: Assign quiz to class,Parent: Story: Faculty creates quizzes,Product Backlog
+Task: View quiz results,Parent: Story: Faculty creates quizzes,Product Backlog
+Epic 6 – AI Integration,Goal: AI-assisted question generation.,Product Backlog
+Story: AI helps generate quiz questions,"As a faculty, I want AI to help generate quiz questions.",Product Backlog
+Task: Add 'Generate with AI' button in quiz form,Parent: Story: AI helps generate quiz questions,Product Backlog
+Task: Integrate AI API for question generation,Parent: Story: AI helps generate quiz questions,Product Backlog
+Task: Show AI suggestions with edit option,Parent: Story: AI helps generate quiz questions,Product Backlog
+Task: Save AI-generated questions,Parent: Story: AI helps generate quiz questions,Product Backlog
+Epic 7 – Student Quiz Attempt,Goal: Students take quizzes online; timer & autosubmit.,Product Backlog
+Story: Student takes quizzes,"As a student, I want to take quizzes online.",Product Backlog
+Task: Create quiz attempt UI,Parent: Story: Student takes quizzes,Product Backlog
+Task: Timer countdown,Parent: Story: Student takes quizzes,Product Backlog
+Task: Auto-submit on timeout,Parent: Story: Student takes quizzes,Product Backlog
+Task: Save responses via API,Parent: Story: Student takes quizzes,Product Backlog
+Epic 8 – Reporting & Analytics,"Goal: Faculty sees performance analytics, tables & charts.",Product Backlog
+Story: Faculty views performance analytics,"As a faculty, I want to see quiz performance analytics.",Product Backlog
+Task: Display results in table,Parent: Story: Faculty views performance analytics,Product Backlog
+Task: Score distribution chart,Parent: Story: Faculty views performance analytics,Product Backlog
+Task: Highlight top performers,Parent: Story: Faculty views performance analytics,Product Backlog
+Epic 9 – UI Enhancements & Effects,"Goal: Modern, smooth, accessible UI.",Product Backlog
+Story: Smooth modern UI,"As a user, I want a modern and smooth UI.",Product Backlog
+Task: Hover animations for class cards,Parent: Story: Smooth modern UI,Product Backlog
+Task: Improve heading styles,Parent: Story: Smooth modern UI,Product Backlog
+Task: Use gradients & textures in backgrounds,Parent: Story: Smooth modern UI,Product Backlog
+"Task: Ensure accessibility (contrast, fonts)",Parent: Story: Smooth modern UI,Product Backlog
+Epic 10 – Deployment & Maintenance,"Goal: Deploy app (frontend+backend), env vars, DB, logging/monitoring.",Product Backlog
+Story: Deploy the app live,"As a developer, I want to deploy the app so it’s live for users.",Product Backlog
+Task: Prepare environment variables,Parent: Story: Deploy the app live,Product Backlog
+Task: Deploy frontend to Vercel,Parent: Story: Deploy the app live,Product Backlog
+Task: Deploy backend to hosting,Parent: Story: Deploy the app live,Product Backlog
+Task: Set up database,Parent: Story: Deploy the app live,Product Backlog
+Task: Add logging & monitoring,Parent: Story: Deploy the app live,Product Backlog

@@ -1,0 +1,77 @@
+.loginbtn {
+  padding: 1em 2em;
+  border: none;
+  border-radius: 5px;
+  font-weight: bold;
+  letter-spacing: 5px;
+  text-transform: uppercase;
+  cursor: pointer;
+  color: #264d8b;
+  transition: all 1000ms;
+  font-size: 15px;
+  position: relative;
+  overflow: hidden;
+  outline: 2px solid #264d8b;
+}
+
+.loginbtn:hover {
+  color: #ffffff;
+  transform: scale(1.1);
+  outline: 2px solid #264d8b;
+  box-shadow: 4px 5px 17px -4px #264d8b;
+}
+
+.loginbtn::before {
+  content: "";
+  position: absolute;
+  left: -50px;
+  top: 0;
+  width: 0;
+  height: 100%;
+  background-color: #264d8b;
+  transform: skewX(45deg);
+  z-index: -1;
+  transition: width 1000ms;
+}
+
+.loginbtn:hover::before {
+  width: 250%;
+}
+
+
+
+/* 3D context on the wrapper */
+.tilt-container {
+  perspective: 1000px;
+}
+
+/* the card that tilts */
+.tilt-card {
+  transform-style: preserve-3d;
+  transition: transform 300ms ease, box-shadow 300ms ease;
+  will-change: transform;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.12);
+}
+
+.tilt-card:hover {
+  box-shadow: 0 30px 60px rgba(0,0,0,0.18);
+}
+
+/* optional: a subtle highlight that reacts on hover */
+.tilt-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(600px circle at var(--mx,50%) var(--my,50%), rgba(255,255,255,0.2), transparent 40%);
+  opacity: 0;
+  transition: opacity 250ms ease;
+  border-radius: inherit;
+}
+.tilt-card:hover::after { opacity: 1; }
+
+/* disable fancy hover on touch devices */
+@media (pointer: coarse) {
+  .tilt-card { transition: box-shadow 300ms ease; }
+  .tilt-card:hover { transform: none; }
+}
