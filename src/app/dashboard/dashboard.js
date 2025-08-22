@@ -3,14 +3,16 @@
 import BlurText from '../_components/BlurText';
 import { Plus } from 'lucide-react';
 import { useState } from 'react';
+import { motion } from 'framer-motion';
 import FancyClassCard from './_components/FancyClassCard';
 import ClassAddModal from './_components/ClassAddModal';
 import toast from 'react-hot-toast';
 
 export default function DashboardPage() {
   const [classes, setClasses] = useState([
-    { id: 'c1', title: 'Semester 1', code: '101', dept: 'CS', section: 'B', students: 42 },
-    { id: 'c2', title: 'Semester 3', code: '301', dept: 'CS', section: 'A', students: 37 },
+    // Start empty to see the new empty state:
+    { id: 'c1', name: 'Software Project Management', sem: '4' , code: '101', dept: 'CS', section: 'B', students: 42 },
+    { id: 'c2', name: 'Data Communication', sem: '3' , code: '301', dept: 'CS', section: 'A', students: 37 },
   ]);
 
   const [openAdd, setOpenAdd] = useState(false);
@@ -23,7 +25,8 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen">
       {/* HERO */}
-      <section className="relative flex flex-col justify-center items-center h-[72vh] overflow-hidden">
+      <section className="relative flex flex-col justify-center items-center
+                    h-[56vh] md:h-[64vh] overflow-hidden">
         {/* Background Layer */}
         <div className="absolute inset-0">
           <div className="absolute inset-0 bg-gradient-to-br from-[#2E5EAA] via-[#81B29A] to-[#2E5EAA] opacity-80" />
@@ -47,12 +50,11 @@ export default function DashboardPage() {
             Your classes, quizzes, and performance tracking — all in one place.
           </p>
         </div>
-
       </section>
 
-      {/* CLASSES SECTION (blue pattern + translucent gradient tint) */}
+      {/* CLASSES SECTION (pattern + translucent tint) */}
       <section
-        className="relative pt-16 pb-12" // <-- extra breathing room on top
+        className="relative -mt-20 md:-mt-24 py-12 md:py-16"
         style={{
           backgroundImage:
             "linear-gradient(to bottom, rgba(243,248,255,0.70), rgba(255,255,255,0.70)), url('/bgg2.png')",
@@ -61,9 +63,8 @@ export default function DashboardPage() {
           backgroundPosition: 'center top, left top',
         }}
       >
-        {/* content sits above tint */}
         <div className="relative">
-          <div className="mx-auto max-w-4xl px-6 mb-4">
+          {classes.length > 0 && <div className="mx-auto max-w-4xl px-6 mb-4">
             <h2 className="relative overflow-hidden">
               <span
                 className="inline-block text-3xl md:text-4xl font-extrabold tracking-tight
@@ -72,27 +73,35 @@ export default function DashboardPage() {
                 Your Classes
               </span>
             </h2>
-
             <p className="mt-2 text-gray-600">
               Manage semesters, students, and quizzes from here.
             </p>
-          </div>
+          </div>}
 
+          {/* CONTENT */}
           <main className="mx-auto max-w-4xl px-6 pb-28 space-y-8">
-            {classes.map((cls) => (
-              <FancyClassCard key={cls.id} cls={cls} />
-            ))}
+            {classes.length === 0 ? (
+              <EmptyState onAdd={() => setOpenAdd(true)} />
+            ) : (
+              classes.map((cls) => <FancyClassCard key={cls.id} cls={cls} />)
+            )}
           </main>
 
-          {/* Floating Plus Button */}
+          {/* Floating Plus Button (with beacon + tooltip) */}
           <div className="fixed bottom-6 right-6">
             <button
               onClick={() => setOpenAdd(true)}
-              className="bg-[#2E5EAA] hover:bg-[#264d8b] text-white w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition duration-300 hover:scale-105"
+              className="relative bg-[#2E5EAA] hover:bg-[#264d8b] text-white w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition duration-300 hover:scale-105"
               title="Add Class"
             >
+              {/* pulsing beacon */}
+              {classes.length == 0 && <span className="absolute -inset-2 rounded-full animate-ping bg-[#2E5EAA]/40" />}
               <Plus size={28} strokeWidth={3} />
             </button>
+            {/* hover tooltip */}
+            <div className="pointer-events-none absolute bottom-full mb-2 right-1/2 translate-x-1/2 whitespace-nowrap rounded-md bg-black px-3 py-1 text-xs text-white opacity-0 translate-y-1 shadow-md transition duration-200 hover:opacity-100 hover:translate-y-0">
+              Add Class
+            </div>
           </div>
 
           {/* Modal */}
@@ -103,6 +112,66 @@ export default function DashboardPage() {
           />
         </div>
       </section>
+    </div>
+  );
+}
+
+/* ---------------- Empty State ---------------- */
+
+function EmptyState({ onAdd }) {
+  return (
+    <div className="relative overflow-hidden rounded-2xl bg-white/90 backdrop-blur-md border border-black/5 shadow-sm p-10">
+      {/* soft animated blobs */}
+      <motion.div
+        aria-hidden
+        className="absolute -top-20 -right-16 w-80 h-80 rounded-full bg-[#4A8FE7]/10 blur-3xl"
+        animate={{ y: [0, -10, 0], x: [0, 14, 0] }}
+        transition={{ duration: 7, repeat: Infinity, ease: 'easeInOut' }}
+      />
+      <motion.div
+        aria-hidden
+        className="absolute -bottom-16 -left-16 w-72 h-72 rounded-full bg-[#81B29A]/10 blur-3xl"
+        animate={{ y: [0, 12, 0], x: [0, -10, 0] }}
+        transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
+      />
+
+      <div className="relative z-10 flex flex-col items-center text-center">
+        {/* Animated emoji */}
+        <motion.div
+          className="text-6xl md:text-7xl select-none"
+          animate={{ y: [0, -6, 0] }}
+          transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
+        >
+          📚
+        </motion.div>
+
+        <h3 className="mt-4 text-xl font-semibold text-[#2B2D42]">No classes yet</h3>
+        <p className="text-gray-600 mt-1">
+          Click the <span className="font-semibold">“+”</span> button to create your first class.
+        </p>
+
+        {/* CTA mirrors the floating + but also opens the modal */}
+        <button
+          onClick={onAdd}
+          className="group relative inline-flex items-center gap-2 mt-6 px-5 py-3 rounded-xl font-semibold text-white 
+                     bg-gradient-to-r from-[#2E5EAA] via-[#4A8FE7] to-[#81B29A]
+                     hover:shadow-xl transition-all duration-300"
+        >
+          {/* sheen */}
+          <span className="pointer-events-none absolute -left-10 top-0 h-full w-10 rotate-12 bg-white/30 opacity-0 group-hover:opacity-100 translate-x-0 group-hover:translate-x-[220%] transition-all duration-700" />
+          Create Class
+        </button>
+
+        {/* little hint arrow towards the floating + */}
+        <motion.div
+          className="mt-8 flex items-center gap-2 text-xs text-gray-500"
+          animate={{ opacity: [0.6, 1, 0.6], x: [0, 4, 0] }}
+          transition={{ duration: 2, repeat: Infinity }}
+        >
+          or use the button in the bottom-right
+          <span>➡️</span>
+        </motion.div>
+      </div>
     </div>
   );
 }

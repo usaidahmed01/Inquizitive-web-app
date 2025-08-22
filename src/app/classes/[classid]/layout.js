@@ -6,6 +6,7 @@ import Link from "next/link";
 
 export default function ClassLayout({ children, params }) {
   const { classId } = params;
+  
 
   return (
     <section

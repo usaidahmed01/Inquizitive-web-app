@@ -10,7 +10,7 @@ import toast from "react-hot-toast";
  * Props: { cls: { id, title, code, students } }
  */
 export default function FancyClassCard({ cls }) {
-  
+
   return (
     <Link
       href={`/classes/${cls.id}`}
@@ -58,10 +58,11 @@ export default function FancyClassCard({ cls }) {
           <div className="flex items-start justify-between gap-3">
             <div className="space-y-1">
               <h3 className="text-xl md:text-2xl font-bold tracking-tight">
-                BS{cls.dept} - {cls.title}
+                BS{cls.dept} - {cls.name}
               </h3>
               <span className="inline-flex items-center gap-2 text-[13px] font-semibold bg-white/18 px-2.5 py-1 rounded-md">
                 <span className="opacity-90">Code:</span>{cls.dept}-{cls.code}
+                <span className="opacity-90">Sem:</span>{cls.sem == '1' && <>{cls.sem}st</>} {cls.sem == '2' && <>{cls.sem}nd</>} {cls.sem == '3' && <>{cls.sem}rd</>} {cls.sem != '1' && cls.sem != '2' && cls.sem != '3' && <>{cls.sem}th</>}
 
                 {cls.section && <><span className="opacity-90">Section:</span> {cls.section}</>}
               </span>
@@ -94,12 +95,30 @@ export default function FancyClassCard({ cls }) {
         </div>
 
         {/* Bottom-right: Generate Class Link button */}
+
         <button
-          onClick={(e) => {
-            e.preventDefault(); // keep the whole card link from navigating
-            // TODO: replace with real link generation + copy
-            toast.success(`Invite Link Copied`);
+          onClick={async (e) => {
+            // keep the card <Link> from navigating
+            e.preventDefault();
+            e.stopPropagation();
+
+            const origin =
+              typeof window !== "undefined" && window.location
+                ? window.location.origin
+                : "";
+
+            const inviteUrl = `${origin}/join/${cls.id}`;
+
+            try {
+              await navigator.clipboard.writeText(inviteUrl);
+              toast.success("Invite link copied!", { position: "top-center" });
+            } catch {
+              // Fallback for browsers/permissions
+              window.prompt("Copy this link:", inviteUrl);
+              toast.success("Invite link ready to copy", { position: "top-center" });
+            }
           }}
+
           className="absolute bottom-4 right-4 bg-white/20 hover:bg-white/30 p-2 rounded-full backdrop-blur-sm transition"
           title="Generate Class Link"
           aria-label="Generate Class Link"

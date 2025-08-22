@@ -8,13 +8,22 @@ import ConfirmModal from "./ConfirmModal";
 export default function HeaderActions({ classId, className = "", onDelete }) {
   const [openConfirm, setOpenConfirm] = useState(false);
 
-  const copyInvite = useCallback(() => {
-    const origin = typeof window !== "undefined" ? window.location.origin : "";
-    const inviteUrl = `${origin}/join/${classId}`; // adjust later if you use another route
-    navigator.clipboard.writeText(inviteUrl).then(
-      () => toast.success("Invite link copied!"),
-      () => toast.error("Could not copy link")
-    );
+  const copyInvite = useCallback(async () => {
+    const origin =
+      typeof window !== "undefined" && window.location
+        ? window.location.origin
+        : "";
+
+    const inviteUrl = `${origin}/join/${classId}`;
+
+    try {
+      await navigator.clipboard.writeText(inviteUrl);
+      toast.success("Invite link copied!", { position: "top-center" });
+    } catch {
+      // Fallback for browsers/permissions
+      window.prompt("Copy this link:", inviteUrl);
+      toast.success("Invite link ready to copy", { position: "top-center" });
+    }
   }, [classId]);
 
   const handleConfirmDelete = useCallback(() => {

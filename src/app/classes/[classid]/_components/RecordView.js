@@ -2,31 +2,44 @@
 
 import { useMemo, useState, useRef, useEffect } from "react";
 import SlideUp from "@/app/_components/SlideUp";
-import { Upload, Filter, Users, ChevronDown } from "lucide-react";
+import { Upload, Filter, Users, ChevronDown, Search, ChevronRight, Trophy } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import StudentResultModal from "../record.js/StudentResultModal";
+
+// --- mock data (swap with API later) ---
+const STUDENTS = [
+  { id: "s1", name: "Ayesha Khan", seat: "B23110006177", email: "ayesha@uni.edu", average: 86, last: { quiz: "Quiz 3", score: 18, total: 20 } },
+  { id: "s2", name: "Daniyal Raza", seat: "B23110006172", email: "daniyal@uni.edu", average: 72, last: { quiz: "Quiz 3", score: 15, total: 20 } },
+  { id: "s3", name: "Hira Shah",   seat: "B23110006171", email: "hira@uni.edu",   average: 91, last: { quiz: "Quiz 2", score: 19, total: 20 } },
+  { id: "s4", name: "Moiz Ali",    seat: "B23110006179", email: "moiz@uni.edu",   average: 65, last: { quiz: "Quiz 1", score: 13, total: 20 } },
+];
+
+function badgeColor(avg) {
+  if (avg >= 80) return "bg-green-100 text-green-800";
+  if (avg >= 65) return "bg-amber-100 text-amber-800";
+  if (avg >= 50) return "bg-orange-100 text-orange-800";
+  return "bg-red-100 text-red-700";
+}
 
 export default function RecordView() {
-  // ---- mock data (replace with API later) ----
+  // toolbar
   const [query, setQuery] = useState("");
-  const students = useMemo(
-    () => [
-      { id: "s1", name: "Ayesha Khan", seat: "B23110006177", email: "ayesha@uni.edu", average: 86 },
-      { id: "s2", name: "Daniyal Raza", seat: "B23110006172", email: "daniyal@uni.edu", average: 72 },
-      { id: "s3", name: "Hira Shah",   seat: "B23110006171", email: "hira@uni.edu",   average: 91 },
-      { id: "s4", name: "Moiz Ali",    seat: "B23110006179", email: "moiz@uni.edu",   average: 65 },
-    ],
-    []
-  );
-
-  // ---- filters / sorting ----
   const [filterOpen, setFilterOpen] = useState(false);
   const [minAvg, setMinAvg] = useState(0);
   const [sortBy, setSortBy] = useState("name");   // "name" | "average"
   const [sortDir, setSortDir] = useState("asc");  // "asc" | "desc"
 
+  // selection/modal + fetching
+  const [openId, setOpenId] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [results, setResults] = useState(null);     // { quizzes: [...] }
+  const [error, setError] = useState(null);
+  const abortRef = useRef(null);
+
+  // filter + sort
   const filteredSorted = useMemo(() => {
     const q = query.trim().toLowerCase();
-
-    let list = students.filter((s) => {
+    let list = STUDENTS.filter((s) => {
       const hit =
         s.name.toLowerCase().includes(q) ||
         s.seat.toLowerCase().includes(q) ||
@@ -42,14 +55,14 @@ export default function RecordView() {
     });
 
     return list;
-  }, [students, query, minAvg, sortBy, sortDir]);
+  }, [query, minAvg, sortBy, sortDir]);
 
   const handleImport = () => {
-    // later: CSV -> add rows
+    // later: CSV upload
     console.log("Import CSV");
   };
 
-  // close popover on outside click
+  // close filter popover on outside click
   const popRef = useRef(null);
   useEffect(() => {
     function onDocClick(e) {
@@ -62,10 +75,56 @@ export default function RecordView() {
     return () => document.removeEventListener("mousedown", onDocClick);
   }, [filterOpen]);
 
+  // open student -> fetch results (with spinner + abort protection)
+  const openStudent = async (id) => {
+    // clear state
+    setOpenId(id);
+    setResults(null);
+    setError(null);
+
+    // abort any in-flight request
+    if (abortRef.current) abortRef.current.abort();
+    const ac = new AbortController();
+    abortRef.current = ac;
+
+    setLoading(true);
+    try {
+      // TODO: replace with your real API call like:
+      // const res = await fetch(`/api/classes/${classId}/students/${id}/results`, { signal: ac.signal });
+      // if (!res.ok) throw new Error("Failed to load results");
+      // const data = await res.json();
+
+      // demo: small delay + fake payload
+      await new Promise((r) => setTimeout(r, 700));
+      const data = {
+        quizzes: [
+          { id: "q3", title: "Quiz 3", date: "2025-09-10T10:30:00Z", score: 18, total: 20 },
+          { id: "q2", title: "Quiz 2", date: "2025-08-28T12:00:00Z", score: 10, total: 20 },
+          { id: "q1", title: "Quiz 1", date: "2025-08-12T09:15:00Z", score: 8,  total: 20 },
+        ],
+      };
+
+      setResults(data);
+    } catch (err) {
+      if (err.name !== "AbortError") {
+        setError("Could not load results");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const closeModal = () => {
+    setOpenId(null);
+    setResults(null);
+    setError(null);
+    if (abortRef.current) abortRef.current.abort();
+  };
+
   return (
     <SlideUp>
       <div className="space-y-6">
-        {/* Stats (Avg removed) */}
+        {/* Small stats row */}
         <div className="grid sm:grid-cols-2 gap-4">
           <div className="relative overflow-hidden rounded-2xl bg-white shadow-sm border border-black/5">
             <div className="absolute -top-8 -right-6 w-28 h-28 rounded-full bg-[#2E5EAA]/10 blur-2xl" />
@@ -75,7 +134,7 @@ export default function RecordView() {
               </div>
               <div>
                 <p className="text-xs text-gray-500">Total Students</p>
-                <p className="text-2xl font-bold text-[#2B2D42] mt-1">{students.length}</p>
+                <p className="text-2xl font-bold text-[#2B2D42] mt-1">{STUDENTS.length}</p>
               </div>
             </div>
           </div>
@@ -90,10 +149,10 @@ export default function RecordView() {
           </div>
         </div>
 
-        {/* Toolbar — give it higher z so popover stays above table */}
+        {/* Toolbar */}
         <div className="relative z-40 rounded-2xl bg-white/80 backdrop-blur border border-black/5 p-4 shadow-sm">
           <div className="flex flex-wrap items-center gap-3">
-            {/* Search */}
+            {/* Search input */}
             <div className="relative flex-1 min-w-[220px]">
               <input
                 value={query}
@@ -101,19 +160,10 @@ export default function RecordView() {
                 placeholder="Search by name, seat #, or email"
                 className="w-full rounded-xl border border-gray-300/70 px-4 py-2.5 pr-10 text-sm outline-none focus:ring-2 focus:ring-[#2E5EAA]/30"
               />
-              <svg
-                className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400"
-                viewBox="0 0 20 20" fill="currentColor"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M12.9 14.32a8 8 0 111.414-1.414l3.387 3.387a1 1 0 01-1.414 1.414l-3.387-3.387zM14 8a6 6 0 11-12 0 6 6 0 0112 0z"
-                  clipRule="evenodd"
-                />
-              </svg>
+              <Search className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             </div>
 
-            {/* Filters button + popover */}
+            {/* Filter popover */}
             <div className="relative" ref={popRef}>
               <button
                 onClick={() => setFilterOpen((v) => !v)}
@@ -177,67 +227,104 @@ export default function RecordView() {
                 <Upload size={16} />
                 Import CSV
               </button>
-              {/* Export removed */}
             </div>
           </div>
         </div>
 
-        {/* Table */}
-        <div className="relative z-0 rounded-2xl border border-black/5 bg-white shadow-sm overflow-visible">
-          {/* Sticky header */}
-          <div className="sticky top-0 z-10">
-            <div
-              className="px-5 py-3
-                         bg-[linear-gradient(180deg,rgba(243,248,255,0.9)_0%,rgba(255,255,255,0.85)_100%)]
-                         backdrop-blur supports-[backdrop-filter]:backdrop-blur-sm
-                         shadow-[inset_0_-1px_0_rgba(0,0,0,0.06),0_6px_16px_-10px_rgba(0,0,0,0.12)]"
-            >
-              <div className="grid grid-cols-[2fr_1fr_2fr_1fr] gap-3 text-[13px] font-semibold text-[#2B2D42]">
-                <div className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#2E5EAA]/70" />
-                  Name
-                </div>
-                <div>Seat #</div>
-                <div>Email</div>
-                <div className="text-right pr-2">Average</div>
-              </div>
-            </div>
-            <div className="h-px bg-black/5" />
-          </div>
+        {/* Tappable List (no table) */}
+        <div className="space-y-3">
+          <AnimatePresence>
+            {filteredSorted.map((s, i) => (
+              <motion.button
+                key={s.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.25, delay: i * 0.03 }}
+                onClick={() => openStudent(s.id)}
+                className="w-full text-left group relative overflow-hidden rounded-2xl bg-white border border-black/5 shadow-sm p-4 hover:shadow-md transition"
+              >
+                {/* sheen */}
+                <span className="pointer-events-none absolute -inset-y-10 -left-1/3 w-1/3 rotate-12 bg-white/10 group-hover:translate-x-[180%] transition-transform duration-700" />
 
-          {/* Rows: give only rows scrolling so popovers aren't clipped */}
-          <div className="max-h-[520px] overflow-y-auto divide-y divide-gray-100">
-            {filteredSorted.length === 0 ? (
-              <div className="p-10 text-center text-gray-500 text-sm">
-                No students found. Try a different search or filters.
-              </div>
-            ) : (
-              filteredSorted.map((s, i) => (
-                <div
-                  key={s.id}
-                  className={`grid grid-cols-[2fr_1fr_2fr_1fr] gap-3 px-5 py-3 text-sm items-center transition
-                              hover:bg-[#F7FAFF] ${i % 2 === 0 ? "bg-white" : "bg-gray-50/60"}`}
-                >
-                  <div className="font-medium text-[#2B2D42]">{s.name}</div>
-                  <div className="text-gray-700">{s.seat}</div>
-                  <div className="text-gray-600 truncate">{s.email}</div>
-                  <div className="text-right pr-2">
-                    <span className={badgeColor(s.average)}>{s.average}%</span>
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-4 min-w-0">
+                    {/* avatar initials */}
+                    <div
+                      className="h-11 w-11 shrink-0 rounded-xl grid place-items-center text-white font-semibold"
+                      style={{
+                        background: "linear-gradient(135deg, #2E5EAA 0%, #81B29A 60%, #4A8FE7 100%)",
+                      }}
+                    >
+                      {s.name
+                        .split(" ")
+                        .map((n) => n[0])
+                        .join("")
+                        .slice(0, 2)
+                        .toUpperCase()}
+                    </div>
+
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="font-semibold text-[#1F2937] truncate">{s.name}</p>
+                        {s.average >= 85 && (
+                          <span className="inline-flex items-center gap-1 text-[11px] text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+                            <Trophy size={12} /> Top
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-600 truncate">{s.seat}</p>
+                      <p className="text-[12px] text-gray-500">{s.email}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-4 shrink-0">
+                    <div className="text-right">
+                      <div className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-semibold ${badgeColor(s.average)}`}>
+                        Avg {s.average}%
+                      </div>
+                      <p className="text-[12px] text-gray-500 mt-1">
+                        {s.last.quiz}: {s.last.score}/{s.last.total}
+                      </p>
+                    </div>
+                    <ChevronRight className="text-gray-400 group-hover:text-[#2E5EAA] transition" />
                   </div>
                 </div>
-              ))
-            )}
-          </div>
+              </motion.button>
+            ))}
+          </AnimatePresence>
+
+          {filteredSorted.length === 0 && (
+            <div className="rounded-2xl bg-white border border-black/5 shadow-sm p-10 text-center">
+              <p className="mt-2 text-[#2B2D42] font-semibold">No students found</p>
+              <p className="text-sm text-gray-600">Try a different search or filters.</p>
+            </div>
+          )}
         </div>
+
+        {/* loading overlay while fetching */}
+        <AnimatePresence>
+          {loading && (
+            <motion.div
+              className="fixed inset-0 z-[80] grid place-items-center bg-black/25 backdrop-blur-sm"
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            >
+              <div className="rounded-xl bg-white/90 px-4 py-3 shadow-sm text-sm text-gray-700 border border-white/50">
+                Loading student results…
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Modal */}
+        <StudentResultModal
+          open={!!openId}
+          onClose={closeModal}
+          student={STUDENTS.find((s) => s.id === openId) || null}
+          results={results}
+          error={error}
+        />
       </div>
     </SlideUp>
   );
-}
-
-// Badge colors
-function badgeColor(avg) {
-  if (avg >= 80) return "inline-flex items-center rounded-md px-2 py-1 text-xs font-semibold bg-green-100 text-green-800";
-  if (avg >= 65) return "inline-flex items-center rounded-md px-2 py-1 text-xs font-semibold bg-amber-100 text-amber-800";
-  if (avg >= 50) return "inline-flex items-center rounded-md px-2 py-1 text-xs font-semibold bg-orange-100 text-orange-800";
-  return "inline-flex items-center rounded-md px-2 py-1 text-xs font-semibold bg-red-100 text-red-700";
 }

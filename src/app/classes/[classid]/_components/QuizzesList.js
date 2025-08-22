@@ -68,13 +68,22 @@ export default function QuizzesList() {
         <Link
           href={`/classes/${classId}/quiz/generate`}
           className="group relative inline-flex items-center gap-2 rounded-xl px-5 py-3 font-semibold text-white 
-                     bg-gradient-to-r from-[#2B7A78] via-[#3AAFA9] to-[#7ED0B6]
-                     hover:shadow-lg transition-all duration-300"
+             bg-gradient-to-r from-[#2B7A78] via-[#3AAFA9] to-[#7ED0B6]
+             hover:shadow-lg transition-all duration-300
+             text-sm sm:text-base"
           title="Create a new quiz"
         >
-          <span className="pointer-events-none absolute -left-10 top-0 h-full w-10 rotate-12 bg-white/30 opacity-0 group-hover:opacity-100 translate-x-0 group-hover:translate-x-[220%] transition-all duration-700" />
+          <span className="pointer-events-none absolute -left-10 top-0 h-full w-10 rotate-12 bg-white/30 
+                   opacity-0 group-hover:opacity-100 translate-x-0 
+                   group-hover:translate-x-[220%] transition-all duration-700" />
+
           <Plus size={18} />
-          <span>New Quiz</span>
+
+          {/* hide text on small screens, show only on sm+ */}
+          <span className="hidden sm:inline">New Quiz</span>
+
+          {/* show compact label for mobile only */}
+          <span className="sm:hidden">New</span>
         </Link>
       </div>
 
@@ -132,7 +141,7 @@ function QuizTiltCard({ q, classId, index, delay = 0 }) {
                   <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-gray-700">
                     <span className="inline-flex items-center gap-1">
                       <svg width="14" height="14" viewBox="0 0 24 24" className="-mt-px">
-                        <path fill="currentColor" d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/>
+                        <path fill="currentColor" d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z" />
                       </svg>
                       {q.count ?? '—'} questions
                     </span>
@@ -141,7 +150,7 @@ function QuizTiltCard({ q, classId, index, delay = 0 }) {
                     {q.createdAt && (
                       <span className="inline-flex items-center gap-1">
                         <svg width="14" height="14" viewBox="0 0 24 24" className="-mt-px">
-                          <path fill="currentColor" d="M12 20a8 8 0 1 0 0-16a8 8 0 0 0 0 16m.5-12v4.25l3 1.75l-.75 1.23L11 12V8z"/>
+                          <path fill="currentColor" d="M12 20a8 8 0 1 0 0-16a8 8 0 0 0 0 16m.5-12v4.25l3 1.75l-.75 1.23L11 12V8z" />
                         </svg>
                         {new Date(q.createdAt).toLocaleString()}
                       </span>
