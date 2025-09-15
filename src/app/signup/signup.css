@@ -72,8 +72,33 @@
 }
 .tilt-card:hover::after { opacity: 1; }
 
-/* disable fancy hover on touch devices */
-@media (pointer: coarse) {
-  .tilt-card { transition: box-shadow 300ms ease; }
-  .tilt-card:hover { transform: none; }
+/* Hide Edge/IE native password reveal + clear buttons */
+.hide-native-reveal::-ms-reveal,
+.hide-native-reveal::-ms-clear {
+  display: none;
 }
+
+/* Suppress any WebKit decoration buttons if present */
+.hide-native-reveal::-webkit-credentials-auto-fill-button,
+.hide-native-reveal::-webkit-clear-button,
+.hide-native-reveal::-webkit-textfield-decoration-container {
+  display: none;
+}
+
+.hide-native-reveal {
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+
+/* turn off the big hover zoom on touch devices */
+@media (pointer: coarse) {
+  .signupbtn:hover { transform: none; }
+}
+
+/* respect reduced motion users */
+@media (prefers-reduced-motion: reduce) {
+  .tilt-card { transition: box-shadow 300ms ease !important; }
+  .tilt-card:hover { transform: none !important; }
+}
+

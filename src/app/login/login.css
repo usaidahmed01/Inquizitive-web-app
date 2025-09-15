@@ -14,6 +14,7 @@
   outline: 2px solid #264d8b;
 }
 
+/* Desktop hover zoom; disabled on touch below */
 .loginbtn:hover {
   color: #ffffff;
   transform: scale(1.1);
@@ -38,12 +39,8 @@
   width: 250%;
 }
 
-
-
 /* 3D context on the wrapper */
-.tilt-container {
-  perspective: 1000px;
-}
+.tilt-container { perspective: 1000px; }
 
 /* the card that tilts */
 .tilt-card {
@@ -52,12 +49,9 @@
   will-change: transform;
   box-shadow: 0 20px 40px rgba(0,0,0,0.12);
 }
+.tilt-card:hover { box-shadow: 0 30px 60px rgba(0,0,0,0.18); }
 
-.tilt-card:hover {
-  box-shadow: 0 30px 60px rgba(0,0,0,0.18);
-}
-
-/* optional: a subtle highlight that reacts on hover */
+/* optional: hover highlight */
 .tilt-card::after {
   content: "";
   position: absolute;
@@ -70,8 +64,40 @@
 }
 .tilt-card:hover::after { opacity: 1; }
 
-/* disable fancy hover on touch devices */
+/* Hide Edge/IE native password reveal + clear buttons */
+.hide-native-reveal::-ms-reveal,
+.hide-native-reveal::-ms-clear { display: none; }
+
+/* Try to suppress any WebKit decoration buttons if present */
+.hide-native-reveal::-webkit-credentials-auto-fill-button,
+.hide-native-reveal::-webkit-clear-button,
+.hide-native-reveal::-webkit-textfield-decoration-container { display: none; }
+
+.hide-native-reveal {
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+/* ===== Mobile/Touch optimizations ===== */
+@media (max-width: 640px) {
+  /* lighter shadows on phones for perf */
+  .tilt-card { box-shadow: 0 10px 24px rgba(0,0,0,0.10); }
+  .tilt-card:hover { box-shadow: 0 12px 28px rgba(0,0,0,0.12); }
+
+  /* reduce huge hover zoom on small screens */
+  .loginbtn { font-size: 14px; padding: 0.9em 1.6em; letter-spacing: 3px; }
+}
+
+/* disable fancy hover/tilt on touch devices */
 @media (pointer: coarse) {
   .tilt-card { transition: box-shadow 300ms ease; }
   .tilt-card:hover { transform: none; }
+  .loginbtn:hover { transform: none; box-shadow: 0 0 0 rgba(0,0,0,0); }
+  .tilt-card::after { display: none; }
+}
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .tilt-card { transition: none; }
+  .loginbtn { transition: none; }
 }
