@@ -5,16 +5,13 @@ import { motion } from "framer-motion";
 import { Users, ArrowRight, Link as LinkIcon } from "lucide-react";
 import toast from "react-hot-toast";
 
-/**
- * FancyClassCard — clickable, green gradient, smooth + dynamic.
- * Props: { cls: { id, title, code, students } }
- */
 export default function FancyClassCard({ cls }) {
-
+  console.log("class" , cls);
+  
   return (
     <Link
       href={`/classes/${cls.id}`}
-      className="block group"
+      className="block h-full group"               // <- stretch card height
       aria-label={`Open ${cls.title}`}
     >
       <motion.div
@@ -24,16 +21,15 @@ export default function FancyClassCard({ cls }) {
         whileHover={{
           y: -6,
           scale: 1.02,
-          boxShadow: "0 18px 50px rgba(31, 97, 72, 0.22)", // greenish shadow
+          boxShadow: "0 18px 50px rgba(31, 97, 72, 0.22)",
         }}
-        className="relative rounded-2xl overflow-hidden text-white"
+        className="relative h-full rounded-2xl overflow-hidden text-white"
         style={{
-          // Medium green gradient base (theme-friendly)
           background:
             "linear-gradient(135deg, #5FAF98 0%, #6FC1A8 45%, #A0D9C3 100%)",
         }}
       >
-        {/* Sweep sheen on hover */}
+        {/* sweep sheen */}
         <motion.div
           aria-hidden
           initial={{ x: "-120%" }}
@@ -42,7 +38,7 @@ export default function FancyClassCard({ cls }) {
           className="pointer-events-none absolute -inset-y-12 -left-1/3 w-1/3 rotate-12 bg-white/15 blur-2xl"
         />
 
-        {/* Soft texture so card doesn't feel empty */}
+        {/* subtle texture */}
         <div
           aria-hidden
           className="absolute inset-0 opacity-[0.08] group-hover:opacity-[0.12] transition-opacity"
@@ -52,24 +48,31 @@ export default function FancyClassCard({ cls }) {
           }}
         />
 
-        {/* Content */}
-        <div className="relative p-6 md:p-7">
-          {/* Top row: title + students */}
+        {/* content */}
+        <div className="relative p-5 md:p-7 pb-16 min-h-[172px] sm:min-h-[196px]"> 
+          {/* ^ extra bottom padding so link icon never overlaps text */}
+
+          {/* top row */}
           <div className="flex items-start justify-between gap-3">
             <div className="space-y-1">
               <h3 className="text-xl md:text-2xl font-bold tracking-tight">
-                BS{cls.dept} - {cls.name}
+                BS{cls.dept} - {cls.title}
               </h3>
+
               <span className="inline-flex items-center gap-2 text-[13px] font-semibold bg-white/18 px-2.5 py-1 rounded-md">
                 <span className="opacity-90">Code:</span>{cls.dept}-{cls.code}
-                <span className="opacity-90">Sem:</span>{cls.sem == '1' && <>{cls.sem}st</>} {cls.sem == '2' && <>{cls.sem}nd</>} {cls.sem == '3' && <>{cls.sem}rd</>} {cls.sem != '1' && cls.sem != '2' && cls.sem != '3' && <>{cls.sem}th</>}
-
+                <span className="opacity-90">Sem:</span>
+                {cls.sem == '1' && <>{cls.sem}st</>}
+                {cls.sem == '2' && <>{cls.sem}nd</>}
+                {cls.sem == '3' && <>{cls.sem}rd</>}
+                {cls.sem != '1' && cls.sem != '2' && cls.sem != '3' && <>{cls.sem}th</>}
                 {cls.section && <><span className="opacity-90">Section:</span> {cls.section}</>}
               </span>
             </div>
 
+            {/* hide students badge on mobile */}
             <span
-              className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5
+              className="hidden sm:inline-flex items-center gap-1.5 rounded-full px-3 py-1.5
                          text-sm font-medium text-[#0e3c2e]
                          bg-white/90 backdrop-blur-sm shadow-sm"
               title="Students"
@@ -79,46 +82,33 @@ export default function FancyClassCard({ cls }) {
             </span>
           </div>
 
-          {/* Divider */}
+          {/* divider */}
           <div className="my-5 h-px bg-white/25" />
 
-          {/* Subtext + affordance */}
-          <div className="flex items-center justify-between text-white/90">
-            <p className="text-sm">
-              Manage students & quizzes for this class.
-            </p>
-            <ArrowRight
-              size={18}
-              className="opacity-80 transform transition-transform duration-300 group-hover:translate-x-1"
-            />
+          {/* bottom row: hide on mobile */}
+          <div className="hidden sm:flex items-center justify-between text-white/90">
+            <p className="text-sm">Manage students & quizzes for this class.</p>
           </div>
         </div>
 
-        {/* Bottom-right: Generate Class Link button */}
-
+        {/* link icon — ALWAYS visible (mobile + desktop) */}
         <button
           onClick={async (e) => {
-            // keep the card <Link> from navigating
             e.preventDefault();
             e.stopPropagation();
-
             const origin =
               typeof window !== "undefined" && window.location
                 ? window.location.origin
                 : "";
-
             const inviteUrl = `${origin}/join/${cls.id}`;
-
             try {
               await navigator.clipboard.writeText(inviteUrl);
               toast.success("Invite link copied!", { position: "top-center" });
             } catch {
-              // Fallback for browsers/permissions
               window.prompt("Copy this link:", inviteUrl);
               toast.success("Invite link ready to copy", { position: "top-center" });
             }
           }}
-
           className="absolute bottom-4 right-4 bg-white/20 hover:bg-white/30 p-2 rounded-full backdrop-blur-sm transition"
           title="Generate Class Link"
           aria-label="Generate Class Link"

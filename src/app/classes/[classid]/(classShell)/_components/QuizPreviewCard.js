@@ -66,6 +66,7 @@ export default function QuizPreviewCard({ quiz }) {
           <QuestionRow key={q.id ?? idx} q={q} index={idx} />
         ))}
       </div>
+
     </motion.div>
   );
 }
@@ -82,6 +83,27 @@ function MetaBadge({ icon: Icon, label }) {
 }
 
 function QuestionRow({ q, index }) {
+  // accept both shapes
+  const prompt =
+    q.q ?? q.prompt ?? q.text ?? `Question ${index + 1}`;
+
+  const options = Array.isArray(q.options)
+    ? q.options
+    : Array.isArray(q.choices)
+      ? q.choices
+      : null;
+
+  const answerIndex = Number.isInteger(q.answerIndex)
+    ? q.answerIndex
+    : Number.isInteger(q.correctIndex) // optional alt key
+      ? q.correctIndex
+      : 0;
+
+  const expectedShort =
+    q.a ?? (typeof q.answer === "string" ? q.answer : undefined);
+
+  const isMcq = q.type === "mcq" || Array.isArray(options);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 6 }}
@@ -89,41 +111,40 @@ function QuestionRow({ q, index }) {
       transition={{ duration: 0.16, delay: index * 0.015 }}
       className="relative px-5 py-6"
     >
-      {/* Number chip sits nicely below header now */}
       <div className="mb-3 flex items-center gap-3">
         <span className="grid h-7 w-7 place-items-center rounded-full bg-[#2E5EAA] text-xs font-bold text-white shadow-sm">
           {index + 1}
         </span>
         <p className="text-[15px] font-semibold leading-relaxed text-[#1F2937]">
-          {q.q}
+          {prompt}
         </p>
       </div>
 
-      {q.type === "mcq" ? (
+      {isMcq ? (
         <ul
           role="group"
           className="grid grid-cols-1 gap-2 md:grid-cols-2"
           aria-label="Multiple choice options"
         >
-          {q.options.map((opt, i) => (
-            <OptionItem key={i} label={opt} correct={i === q.answerIndex} />
+          {(options ?? []).map((opt, i) => (
+            <OptionItem key={i} label={opt} correct={i === answerIndex} />
           ))}
         </ul>
       ) : (
-        <ShortAnswer expected={q.a} />
+        <ShortAnswer expected={expectedShort} />
       )}
     </motion.div>
   );
 }
 
+
 function OptionItem({ label, correct }) {
   return (
     <div
       className={`group flex items-center gap-2 rounded-lg border px-3 py-2.5 text-sm transition
-        ${
-          correct
-            ? "border-emerald-300/70 bg-emerald-50"
-            : "border-gray-200 bg-white hover:bg-gray-50"
+        ${correct
+          ? "border-emerald-300/70 bg-emerald-50"
+          : "border-gray-200 bg-white hover:bg-gray-50"
         }`}
     >
       {correct ? (

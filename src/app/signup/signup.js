@@ -271,88 +271,103 @@
 
 
 
-'use client'
+'use client';
 
-import { SignupSchema } from '@/schemas'
-import Link from 'next/link'
-import { motion } from 'framer-motion'
-import Image from 'next/image'
-import { useEffect, useRef, useState } from 'react'
-import VenomBeams from '../_components/VenomBeams'
-import { useRouter } from 'next/navigation'
-import './signup.css'
-import { User, Mail, Lock, Eye, EyeOff } from 'lucide-react'
+import { SignupSchema } from '@/schemas';
+import Link from 'next/link';
+import { motion } from 'framer-motion';
+import Image from 'next/image';
+import { useEffect, useRef, useState } from 'react';
+import VenomBeams from '../_components/VenomBeams';
+import { useRouter } from 'next/navigation';
+import './signup.css';
+import { User, Mail, Lock, Eye, EyeOff } from 'lucide-react';
 
 export default function Signup() {
-  const router = useRouter()
-  const cardRef = useRef(null)
+  const router = useRouter();
+  const cardRef = useRef(null);
 
   // form state
-  const [fullName, setFullName] = useState('')
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [showPw, setShowPw] = useState(false)
+  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPw, setShowPw] = useState(false);
 
   // ui state
-  const [submitting, setSubmitting] = useState(false)
-  const [shake, setShake] = useState(false)
+  const [submitting, setSubmitting] = useState(false);
+  const [shake, setShake] = useState(false);
 
-  // responsiveness: detect touch + reduced motion
-  const [fxEnabled, setFxEnabled] = useState(true)
+  // motion / perf toggles
+  const [fxEnabled, setFxEnabled] = useState(true);
   useEffect(() => {
-    const isTouch = typeof window !== 'undefined' && (('ontouchstart' in window) || navigator.maxTouchPoints > 0)
+    const isTouch =
+      typeof window !== 'undefined' &&
+      (('ontouchstart' in window) || navigator.maxTouchPoints > 0);
     const prefersReduced =
       typeof window !== 'undefined' &&
       window.matchMedia &&
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    setFxEnabled(!(isTouch || prefersReduced))
-  }, [])
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    setFxEnabled(!(isTouch || prefersReduced));
+  }, []);
 
-  // validation (keep your simple rules—backend is zod)
-  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
-  const passwordValid = password.length >= 6
-  const canSubmit = emailValid && passwordValid && !submitting
+  /* ------------ Zod field-level validation (live) ------------ */
+  const nameCheck = SignupSchema.shape.fullName.safeParse(fullName);
+  const emailCheck = SignupSchema.shape.email.safeParse(email.trim());
+  const passCheck = SignupSchema.shape.password.safeParse(password);
 
-  // strength
-  const { score, label, barClass } = getPasswordStrength(password)
+  const canSubmit = nameCheck.success && emailCheck.success && passCheck.success && !submitting;
+
+  // strength meter (unchanged)
+  const { score, label, barClass } = getPasswordStrength(password);
 
   // tilt (skip on touch / reduced motion)
   const handleMove = (e) => {
-    if (!fxEnabled) return
-    const card = cardRef.current
-    if (!card) return
-    if (e.target && e.target.closest('input, button, a, .no-tilt')) return
-    const rect = card.getBoundingClientRect()
-    const x = e.clientX - rect.left
-    const y = e.clientY - rect.top
-    const px = x / rect.width - 0.5
-    const py = y / rect.height - 0.5
-    const max = 10
-    const rx = -(py * max)
-    const ry = px * max
-    card.style.transform = `rotateX(${rx}deg) rotateY(${ry}deg) translateZ(0)`
-  }
+    if (!fxEnabled) return;
+    const card = cardRef.current;
+    if (!card) return;
+    if (e.target && e.target.closest('input, button, a, .no-tilt')) return;
+    const rect = card.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const px = x / rect.width - 0.5;
+    const py = y / rect.height - 0.5;
+    const max = 10;
+    const rx = -(py * max);
+    const ry = px * max;
+    card.style.transform = `rotateX(${rx}deg) rotateY(${ry}deg) translateZ(0)`;
+  };
   const handleLeave = () => {
-    const card = cardRef.current
-    if (!card) return
-    card.style.transform = `rotateX(0deg) rotateY(0deg) translateZ(0)`
-  }
+    const card = cardRef.current;
+    if (!card) return;
+    card.style.transform = `rotateX(0deg) rotateY(0deg) translateZ(0)`;
+  };
 
   const onSubmit = async (e) => {
-    e.preventDefault()
-    if (!canSubmit) {
-      setShake(true)
-      setTimeout(() => setShake(false), 450)
-      return
+    e.preventDefault();
+
+    // run full Zod parse (this also applies fullName transform)
+    const parsed = SignupSchema.safeParse({
+      fullName,
+      email: email.trim(),
+      password,
+    });
+
+    if (!parsed.success) {
+      setShake(true);
+      setTimeout(() => setShake(false), 450);
+      return;
     }
-    setSubmitting(true)
+
+    // ready for backend: parsed.data has normalized fullName & trimmed email
+    setSubmitting(true);
     try {
-      // TODO real signup
-      router.push('/dashboard')
+      // TODO: call your signup endpoint with parsed.data
+      // await fetch('/api/signup', { method:'POST', body: JSON.stringify(parsed.data) })
+      router.push('/dashboard');
     } finally {
-      setSubmitting(false)
+      setSubmitting(false);
     }
-  }
+  };
 
   return (
     <div
@@ -402,16 +417,29 @@ export default function Signup() {
 
             <form className="space-y-4 md:space-y-5" onSubmit={onSubmit} noValidate>
               {/* FULL NAME */}
-              <div className="relative">
-                <User className="absolute left-3 inset-y-0 my-auto text-gray-400" size={18} />
-                <input
-                  type="text"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder="Full Name"
-                  className="w-full h-12 pl-10 pr-4 rounded-lg border border-gray-200 focus:ring-2 focus:ring-[#2E5EAA] outline-none no-tilt"
-                  autoComplete="name"
-                />
+              <div className="space-y-1">
+                <div className="relative">
+                  <User className="absolute left-3 inset-y-0 my-auto text-gray-400" size={18} />
+                  <input
+                    type="text"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="Full Name"
+                    className={`w-full h-12 pl-10 pr-4 rounded-lg border outline-none focus:outline-none focus:ring no-tilt
+                      ${fullName.length === 0
+                        ? 'border-gray-200 focus:ring-[#2E5EAA]'
+                        : nameCheck.success
+                          ? 'border-green-400 focus:ring-green-400'
+                          : 'border-red-400 focus:ring-red-400'
+                      }`}
+                    autoComplete="name"
+                  />
+                </div>
+                {!nameCheck.success && fullName.length > 0 && (
+                  <p className="text-xs text-red-600">
+                    {nameCheck.error?.issues?.[0]?.message || 'Full name is required'}
+                  </p>
+                )}
               </div>
 
               {/* EMAIL */}
@@ -421,12 +449,12 @@ export default function Signup() {
                   <input
                     type="email"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value.trim())}
+                    onChange={(e) => setEmail(e.target.value)}
                     placeholder="@teacher.com"
                     className={`w-full h-12 pl-10 pr-4 rounded-lg border outline-none focus:outline-none focus:ring no-tilt
                       ${email.length === 0
                         ? 'border-gray-200 focus:ring-[#2E5EAA]'
-                        : emailValid
+                        : emailCheck.success
                           ? 'border-green-400 focus:ring-green-400'
                           : 'border-red-400 focus:ring-red-400'
                       }`}
@@ -434,8 +462,10 @@ export default function Signup() {
                     autoComplete="email"
                   />
                 </div>
-                {email.length > 0 && !emailValid && (
-                  <p className="text-xs text-red-600">Enter a valid email address.</p>
+                {!emailCheck.success && email.length > 0 && (
+                  <p className="text-xs text-red-600">
+                    {emailCheck.error?.issues?.[0]?.message || 'Enter a valid email address.'}
+                  </p>
                 )}
               </div>
 
@@ -451,7 +481,7 @@ export default function Signup() {
                     className={`hide-native-reveal w-full h-12 pl-10 pr-12 rounded-lg border outline-none focus:outline-none focus:ring no-tilt
                       ${password.length === 0
                         ? 'border-gray-200 focus:ring-[#2E5EAA]'
-                        : password.length >= 6
+                        : passCheck.success
                           ? 'border-green-400 focus:ring-green-400'
                           : 'border-red-400 focus:ring-red-400'
                       }`}
@@ -469,7 +499,7 @@ export default function Signup() {
                   </button>
                 </div>
 
-                {/* Strength bar */}
+                {/* Strength bar (visual only) */}
                 <div className="mt-2">
                   <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden">
                     <div
@@ -482,8 +512,10 @@ export default function Signup() {
                   </div>
                 </div>
 
-                {password.length > 0 && !passwordValid && (
-                  <p className="mt-1 text-xs text-red-600">Password must be at least 6 characters.</p>
+                {!passCheck.success && password.length > 0 && (
+                  <p className="mt-1 text-xs text-red-600">
+                    {passCheck.error?.issues?.[0]?.message || 'Password must be at least 6 characters.'}
+                  </p>
                 )}
               </div>
 
@@ -509,7 +541,7 @@ export default function Signup() {
         </motion.div>
       </motion.div>
     </div>
-  )
+  );
 }
 
 /* unchanged */

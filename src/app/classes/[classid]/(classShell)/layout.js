@@ -7,8 +7,9 @@ import Link from "next/link";
 export default async function ClassLayout({ children, params }) {
   
   const { classid } = await params;
+  console.log(children);
   
-
+  
   return (
     <section
       className="min-h-screen relative -mt-px"

@@ -434,6 +434,7 @@ import { motion } from "framer-motion";
 import SlideUp from "@/app/_components/SlideUp";
 import VenomBeams from "@/app/_components/VenomBeams";
 import { ShieldCheck, Mail, Lock, IdCard, AlertTriangle } from "lucide-react";
+import './verify.css'
 
 export default function VerifyPage() {
   const router = useRouter();
@@ -756,9 +757,7 @@ export default function VerifyPage() {
                 <button
                   type="submit"
                   disabled={!canSubmit}
-                  className={`select-none no-tilt rounded-lg h-12 px-6 text-white font-semibold shadow-md
-                    ${!canSubmit ? "opacity-60 cursor-not-allowed" : ""}`}
-                  style={{ background: "linear-gradient(90deg, #2E5EAA, #3A86FF, #81B29A)" }}
+                   className={`verifyBtn select-none ${!canSubmit ? 'opacity-60 cursor-not-allowed' : ''} no-tilt`}
                 >
                   {submitting ? "…" : "Verify & Start"}
                 </button>

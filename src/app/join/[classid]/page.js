@@ -345,7 +345,7 @@
 import { JoinClassSchema } from "@/schemas/auth";
 import { normalizeFullName } from "@/schemas/util";
 import { useParams } from "next/navigation";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
 import VenomBeams from "@/app/_components/VenomBeams";
 import toast from "react-hot-toast";
@@ -491,7 +491,7 @@ export default function JoinClassPage() {
                 type="text"
                 value={seat}
                 onChange={(e) => setSeat(e.target.value.toUpperCase())}
-                placeholder="B12345678901"
+                placeholder="B23110006177"
                 className={`w-full px-4 py-3 rounded-lg border outline-none focus:ring-2 ${
                   seat.length === 0
                     ? "border-gray-200 focus:ring-[#2E5EAA]"

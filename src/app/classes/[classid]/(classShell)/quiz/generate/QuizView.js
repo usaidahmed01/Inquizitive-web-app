@@ -168,6 +168,72 @@ function DurationPicker({ minutes, setMinutes }) {
     </div>
   );
 }
+// --- Normalizer: coerce any raw/gappy result into your Zod shape ---
+function normalizeToQuiz(raw, { quizType, durationMin, classId, fallbackCount = 10 }) {
+  const rawQs = Array.isArray(raw?.questions) ? raw.questions : [];
+
+  const questions = rawQs.map((q, i) => {
+    const baseText = String(q?.prompt ?? q?.text ?? q?.fact ?? "").trim();
+
+    if ((q?.type ?? quizType) === "mcq") {
+      // ensure prompt length >= 5
+      const prompt = baseText.length >= 5
+        ? baseText
+        : `Question ${i + 1}: ${baseText || "Choose the correct option"}`;
+
+      // ensure choices >= 2
+      const choices = Array.isArray(q?.choices) ? q.choices.filter(Boolean) : [];
+      const fixedChoices = choices.length >= 2 ? choices : ["Option A", "Option B"];
+
+      // clamp answerIndex into range
+      let answerIndex = Number.isInteger(q?.answerIndex) ? q.answerIndex : 0;
+      if (answerIndex < 0 || answerIndex >= fixedChoices.length) answerIndex = 0;
+
+      return { type: "mcq", prompt, choices: fixedChoices, answerIndex };
+    }
+
+    // short-answer fallback
+    const prompt = baseText.length >= 5
+      ? baseText
+      : `Write a short answer: ${baseText || "Explain briefly"}.`;
+
+    return { type: "short", prompt, answer: typeof q?.answer === "string" ? q.answer : undefined };
+  });
+
+  // if nothing came back, synthesize a single placeholder question
+  const safeQuestions = questions.length > 0
+    ? questions
+    : [{
+      type: quizType === "mcq" ? "mcq" : "short",
+      ...(quizType === "mcq"
+        ? { prompt: "Sample question generated from your material.", choices: ["Yes", "No"], answerIndex: 0 }
+        : { prompt: "Write a short answer based on your material.", answer: undefined }),
+    }];
+
+  return {
+    id: "preview",
+    classId: String(classId || ""),
+    title: raw?.title || "Untitled Quiz",
+    createdAt: new Date().toISOString(),
+    meta: { type: quizType, durationMin },
+    questions: safeQuestions,
+  };
+}
+
+
+// --- tiny helper to show the first zod error nicely
+function showZodError(err) {
+  try {
+    const issues = err?.issues || err?.errors || [];
+    if (Array.isArray(issues) && issues.length) {
+      const first = issues[0];
+      const where = Array.isArray(first?.path) ? first.path.join(".") : "field";
+      return `${where}: ${first?.message || "Invalid input"}`;
+    }
+  } catch { }
+  return "Validation failed.";
+}
+
 
 export default function QuizView() {
   const params = useParams();
@@ -291,50 +357,34 @@ export default function QuizView() {
   //   }
   // };
 
-
   const generateQuiz = async () => {
     if (!classId) {
       toast.error("No class selected. Open this page from /classes/[classid].");
       return;
     }
     if (!canGenerate || generating) return;
-
-    // ✅ validate the form -> safe request payload
-    const req = GenerateQuizRequest.parse({
-      material,
-      quizType,
-      difficulty,
-      count,
-      durationMin,
-    });
-
     setGenerating(true);
+
     try {
       const data = await generateQuizAPI(String(classId), {
-        material: req.material,
-        quizType: req.quizType,
-        difficulty: req.difficulty,
-        count: req.count,
+        material,
+        quizType,
+        difficulty,
+        count,
       });
 
-      // attach duration + type into meta
-      const withMeta = {
-        ...data,
-        meta: {
-          ...(data.meta || {}),
-          durationMin: req.durationMin,
-          type: req.quizType,
-        },
-      };
+      // 🛡️ normalize first, then Zod-validate
+      const normalized = normalizeToQuiz(data, { quizType, durationMin, classId });
 
-      // ✅ validate AI output/assembled preview
-      const preview = QuizPreview.parse(withMeta);
+      // ✅ Zod final guard (throws if still invalid)
+      const valid = Quiz.parse(normalized);
 
-      setQuiz({ id: "preview", ...preview });
+      setQuiz(valid);
 
+      // store for same-tab preview page
       sessionStorage.setItem(
         "inquiz_preview",
-        JSON.stringify({ classId, quiz: { ...preview } })
+        JSON.stringify({ classId, quiz: valid })
       );
 
       setSavedQuizId(null);
@@ -343,11 +393,15 @@ export default function QuizView() {
       });
     } catch (e) {
       console.error(e);
-      toast.error("Failed to generate quiz.");
+      // if Zod error, show the first issue for clarity
+      const msg = e?.issues?.[0]?.message || "Failed to generate quiz.";
+      toast.error(msg);
     } finally {
       setGenerating(false);
     }
   };
+
+
 
 
   /* ---------------- quick preview scroll ---------------- */

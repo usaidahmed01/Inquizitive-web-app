@@ -11,8 +11,8 @@ import toast from 'react-hot-toast';
 export default function DashboardPage() {
   const [classes, setClasses] = useState([
     // Start empty to see the new empty state:
-    { id: 'c1', name: 'Software Project Management', sem: '4' , code: '101', dept: 'CS', section: 'B', students: 42 },
-    { id: 'c2', name: 'Data Communication', sem: '3' , code: '301', dept: 'CS', section: 'A', students: 37 },
+    { id: 'c1', title: 'Software Project Management', sem: '4' , code: '101', dept: 'CS', section: 'B', students: 42 },
+    { id: 'c2', title: 'Data Communication', sem: '3' , code: '301', dept: 'CS', section: 'A', students: 37 },
   ]);
 
   const [openAdd, setOpenAdd] = useState(false);
@@ -83,6 +83,7 @@ export default function DashboardPage() {
             {classes.length === 0 ? (
               <EmptyState onAdd={() => setOpenAdd(true)} />
             ) : (
+              
               classes.map((cls) => <FancyClassCard key={cls.id} cls={cls} />)
             )}
           </main>

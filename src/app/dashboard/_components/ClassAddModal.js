@@ -9,7 +9,7 @@ export default function ClassAddModal({ open, onClose, onCreate }) {
   const [dept, setDept] = useState("CS");      // "CS" | "SE"
   const [title, setTitle] = useState("");      // Course name
   const [code, setCode] = useState("");        // exactly 3 digits
-  const [semester, setSemester] = useState(1); // 1..8
+  const [sem, setsem] = useState(1); // 1..8
   const [section, setSection] = useState("A"); // "A" | "B" (CS only)
   const [errors, setErrors] = useState({});
 
@@ -28,9 +28,9 @@ export default function ClassAddModal({ open, onClose, onCreate }) {
   // Live validity for the code field
   const codeValid = useMemo(() => {
     if (!/^\d{3}$/.test(code)) return false;
-    if (!semester) return false;
-    return code[0] === String(semester);
-  }, [code, semester]);
+    if (!sem) return false;
+    return code[0] === String(sem);
+  }, [code, sem]);
 
   const validate = () => {
     const e = {};
@@ -38,12 +38,12 @@ export default function ClassAddModal({ open, onClose, onCreate }) {
 
     if (!/^\d{3}$/.test(code)) {
       e.code = "Code must be exactly 3 digits";
-    } else if (semester && code[0] !== String(semester)) {
-      e.code = `Code must start with ${semester} for Semester ${semester}`;
+    } else if (sem && code[0] !== String(sem)) {
+      e.code = `Code must start with ${sem} for sem ${sem}`;
     }
 
     if (dept === "CS" && !section) e.section = "Select A or B";
-    if (!semester) e.semester = "Select semester";
+    if (!sem) e.sem = "Select sem";
 
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -57,7 +57,7 @@ export default function ClassAddModal({ open, onClose, onCreate }) {
       id: "c_" + Math.random().toString(36).slice(2, 9),
       title: title.trim(),     // course name
       code,                    // 3-digit string
-      semester,                // 1..8
+      sem,                // 1..8
       dept,                    // CS | SE
       section: dept === "CS" ? section : null,
       students: 0,
@@ -71,7 +71,7 @@ export default function ClassAddModal({ open, onClose, onCreate }) {
     setTimeout(() => {
       setTitle(""); setCode("");
       setDept("CS"); setSection("A");
-      setSemester(1);
+      setsem(1);
       setErrors({});
     }, 200);
   };
@@ -139,30 +139,30 @@ export default function ClassAddModal({ open, onClose, onCreate }) {
                 {/* Divider */}
                 <div className="h-px bg-gray-200" />
 
-                {/* Semester (1–8 circle pills) */}
+                {/* sem (1–8 circle pills) */}
                 <div>
                   <label className="block text-sm font-semibold text-[#2B2D42] mb-2">
-                    Semester <span className="text-red-500">*</span>
+                    sem <span className="text-red-500">*</span>
                   </label>
                   <div className="flex flex-wrap gap-2">
                     {Array.from({ length: 8 }, (_, i) => i + 1).map((n) => (
                       <button
                         key={n}
                         type="button"
-                        onClick={() => setSemester(n)}
+                        onClick={() => setsem(n)}
                         className={`h-10 w-10 rounded-full border transition font-semibold flex items-center justify-center
-                          ${semester === n
+                          ${sem === n
                             ? "bg-[#81B29A] text-white border-transparent shadow-sm"
                             : "bg-white text-[#2B2D42] border-gray-300 hover:bg-gray-50"}`}
-                        aria-pressed={semester === n}
-                        title={`Semester ${n}`}
+                        aria-pressed={sem === n}
+                        title={`sem ${n}`}
                       >
                         {n}
                       </button>
                     ))}
                   </div>
-                  {errors.semester && (
-                    <p className="text-xs text-red-500 mt-1">{errors.semester}</p>
+                  {errors.sem && (
+                    <p className="text-xs text-red-500 mt-1">{errors.sem}</p>
                   )}
                 </div>
 
@@ -189,7 +189,7 @@ export default function ClassAddModal({ open, onClose, onCreate }) {
                 {/* Divider */}
                 <div className="h-px bg-gray-200" />
 
-                {/* Course Code (exactly 3 digits, must start with semester) */}
+                {/* Course Code (exactly 3 digits, must start with sem) */}
                 <div>
                   <label className="block text-sm font-semibold text-[#2B2D42] mb-2">
                     Course Code <span className="text-red-500">*</span>
@@ -197,12 +197,11 @@ export default function ClassAddModal({ open, onClose, onCreate }) {
                   <input
                     value={code}
                     onChange={(e) => onCodeChange(e.target.value)}
-                    placeholder={`e.g., ${semester ?? 1}01`}
+                    placeholder={`e.g., ${sem ?? 1}01`}
                     className={`w-full rounded-lg border px-3 py-2 outline-none focus:ring-2
-                      ${
-                        code.length === 0
-                          ? "border-gray-300 focus:ring-[#2E5EAA]/40"
-                          : codeValid
+                      ${code.length === 0
+                        ? "border-gray-300 focus:ring-[#2E5EAA]/40"
+                        : codeValid
                           ? "border-green-400 focus:ring-green-400"
                           : "border-red-400 focus:ring-red-400"
                       }`}
@@ -211,7 +210,7 @@ export default function ClassAddModal({ open, onClose, onCreate }) {
                   />
                   {code.length > 0 && !codeValid && (
                     <p className="text-xs text-red-500 mt-1">
-                      Code must be 3 digits and start with {semester}.
+                      Code must be 3 digits and start with {sem}.
                     </p>
                   )}
                   {errors.code && code.length === 0 && (
