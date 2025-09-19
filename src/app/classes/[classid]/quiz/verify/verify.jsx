@@ -433,7 +433,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import SlideUp from "@/app/_components/SlideUp";
 import VenomBeams from "@/app/_components/VenomBeams";
-import { ShieldCheck, Mail, Lock, IdCard, AlertTriangle } from "lucide-react";
+import { ShieldCheck, Mail, Lock, IdCard, AlertTriangle, Eye, EyeOff } from "lucide-react";
 import './verify.css'
 
 export default function VerifyPage() {
@@ -451,6 +451,7 @@ export default function VerifyPage() {
   // ui state
   const [submitting, setSubmitting] = useState(false);
   const [shake, setShake] = useState(false);
+  const [showPw, setShowPw] = useState(false);
 
   // link validation
   const [invalid, setInvalid] = useState(false);
@@ -727,8 +728,8 @@ export default function VerifyPage() {
               {/* Password */}
               <div>
                 <div
-                  className={`flex items-center gap-2 h-12 px-4 rounded-lg border bg-white no-tilt
-                    ${pass.length === 0
+                  className={`relative flex items-center gap-2 h-12 px-4 rounded-lg border bg-white no-tilt
+      ${pass.length === 0
                       ? "border-gray-200"
                       : passCheck.success
                         ? "border-green-400"
@@ -737,13 +738,22 @@ export default function VerifyPage() {
                 >
                   <Lock size={16} className="text-[#2E5EAA]" />
                   <input
-                    type="password"
+                    type={showPw ? "text" : "password"}
                     value={pass}
                     onChange={(e) => setPass(e.target.value)}
                     placeholder="••••••"
-                    className="w-full outline-none text-[16px] sm:text-sm"
+                    className="hide-native-reveal w-full outline-none text-[16px] sm:text-sm pr-10"
                     autoComplete="current-password"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPw((v) => !v)}
+                    className="absolute right-3 inset-y-0 my-auto h-8 w-8 grid place-items-center text-gray-600 hover:text-gray-800"
+                    aria-label={showPw ? "Hide password" : "Show password"}
+                    tabIndex={-1}
+                  >
+                    {showPw ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
                 </div>
                 {!passCheck.success && pass.length > 0 && (
                   <p className="mt-1 text-xs text-red-600">
@@ -757,7 +767,7 @@ export default function VerifyPage() {
                 <button
                   type="submit"
                   disabled={!canSubmit}
-                   className={`verifyBtn select-none ${!canSubmit ? 'opacity-60 cursor-not-allowed' : ''} no-tilt`}
+                  className={`verifyBtn select-none ${!canSubmit ? 'opacity-60 cursor-not-allowed' : ''} no-tilt`}
                 >
                   {submitting ? "…" : "Verify & Start"}
                 </button>

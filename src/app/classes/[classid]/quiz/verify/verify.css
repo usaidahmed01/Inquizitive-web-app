@@ -38,3 +38,9 @@
 .verifyBtn:hover::before {
   width: 250%;
 }
+
+/* Hide native reveal/clear buttons in Edge */
+.hide-native-reveal::-ms-reveal,
+.hide-native-reveal::-ms-clear {
+  display: none;
+}
