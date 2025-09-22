@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { GenerateQuizRequest, QuizPreview, Quiz } from "@/schemas/quiz";
+import { Quiz } from "@/schemas/quiz"; // <-- keep only the Zod schema value (JS-safe)
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import SlideUp from "@/app/_components/SlideUp";
@@ -23,17 +23,13 @@ import {
 import { toast } from "react-hot-toast";
 import QuizPreviewCard from "../../_components/QuizPreviewCard";
 import { generateQuizAPI } from "@/app/lib/ai";
-/* ---------------- Modal for Title ---------------- */
-function TitleModal({ open, onClose, onConfirm }) {
-  const [title, setTitle] = useState("");
 
-  useEffect(() => {
-    if (!open) setTitle("");
-  }, [open]);
+/* ---------------- Modal for Title ---------------- */
+function TitleModal({ open, onClose, onConfirm}) {
+  const [title, setTitle] = useState("");
 
   if (!open) return null;
 
-  // helper: capitalize each word
   const capitalizeTitle = (str) =>
     str
       .toLowerCase()
@@ -43,7 +39,7 @@ function TitleModal({ open, onClose, onConfirm }) {
       .join(" ");
 
   const handleSave = () => {
-    const final = capitalizeTitle(title.trim());
+    const final = capitalizeTitle((title || "").trim());
     onConfirm(final);
   };
 
@@ -96,12 +92,11 @@ function TitleModal({ open, onClose, onConfirm }) {
   );
 }
 
-/** --------- Duration selector (pretty pills + custom) --------- */
+/** --------- Duration selector (unchanged logic) --------- */
 function DurationPicker({ minutes, setMinutes }) {
   const PRESETS = [20, 30, 45, 60];
   const [custom, setCustom] = useState("");
 
-  // keep input in sync with minutes
   useEffect(() => {
     if (PRESETS.includes(minutes)) setCustom("");
     else setCustom(String(minutes || ""));
@@ -116,10 +111,11 @@ function DurationPicker({ minutes, setMinutes }) {
             key={m}
             type="button"
             onClick={() => setMinutes(m)}
-            className={`px-3 py-1.5 rounded-full text-sm font-medium transition ${minutes === m
-              ? "bg-[#2E5EAA] text-white shadow-sm"
-              : "bg-white text-[#2B2D42] border border-gray-300/70 hover:bg-gray-50"
-              }`}
+            className={`px-3 py-1.5 rounded-full text-sm font-medium transition ${
+              minutes === m
+                ? "bg-[#2E5EAA] text-white shadow-sm"
+                : "bg-white text-[#2B2D42] border border-gray-300/70 hover:bg-gray-50"
+            }`}
           >
             <span className="inline-flex items-center gap-1">
               <Clock size={14} /> {m}
@@ -127,7 +123,6 @@ function DurationPicker({ minutes, setMinutes }) {
           </button>
         ))}
 
-        {/* Custom input */}
         <div className="inline-flex items-center gap-2 rounded-full border border-gray-300/70 bg-white px-3 py-1.5">
           <Clock size={14} className="text-[#2E5EAA]" />
           <input
@@ -135,15 +130,10 @@ function DurationPicker({ minutes, setMinutes }) {
             onChange={(e) => {
               let v = e.target.value.replace(/[^\d]/g, "");
               let n = Number(v);
-
-              // Enforce min=5 and max=120
               if (n < 5 && v !== "") n = 5;
               if (n > 120) n = 120;
-
               setCustom(v);
-              if (Number.isFinite(n) && n >= 5 && n <= 120) {
-                setMinutes(n);
-              }
+              if (Number.isFinite(n) && n >= 5 && n <= 120) setMinutes(n);
             }}
             onBlur={() => {
               let n = Number(custom);
@@ -168,47 +158,58 @@ function DurationPicker({ minutes, setMinutes }) {
     </div>
   );
 }
-// --- Normalizer: coerce any raw/gappy result into your Zod shape ---
-function normalizeToQuiz(raw, { quizType, durationMin, classId, fallbackCount = 10 }) {
+
+/* --- Normalizer: keep your shape consistent before Zod parse --- */
+function normalizeToQuiz(raw, { quizType, durationMin, classId }) {
   const rawQs = Array.isArray(raw?.questions) ? raw.questions : [];
 
   const questions = rawQs.map((q, i) => {
     const baseText = String(q?.prompt ?? q?.text ?? q?.fact ?? "").trim();
 
     if ((q?.type ?? quizType) === "mcq") {
-      // ensure prompt length >= 5
-      const prompt = baseText.length >= 5
-        ? baseText
-        : `Question ${i + 1}: ${baseText || "Choose the correct option"}`;
+      const prompt =
+        baseText.length >= 5
+          ? baseText
+          : `Question ${i + 1}: ${baseText || "Choose the correct option"}`;
 
-      // ensure choices >= 2
       const choices = Array.isArray(q?.choices) ? q.choices.filter(Boolean) : [];
       const fixedChoices = choices.length >= 2 ? choices : ["Option A", "Option B"];
 
-      // clamp answerIndex into range
       let answerIndex = Number.isInteger(q?.answerIndex) ? q.answerIndex : 0;
       if (answerIndex < 0 || answerIndex >= fixedChoices.length) answerIndex = 0;
 
       return { type: "mcq", prompt, choices: fixedChoices, answerIndex };
     }
 
-    // short-answer fallback
-    const prompt = baseText.length >= 5
-      ? baseText
-      : `Write a short answer: ${baseText || "Explain briefly"}.`;
+    const prompt =
+      baseText.length >= 5
+        ? baseText
+        : `Write a short answer: ${baseText || "Explain briefly"}.`;
 
-    return { type: "short", prompt, answer: typeof q?.answer === "string" ? q.answer : undefined };
+    return {
+      type: "short",
+      prompt,
+      answer: typeof q?.answer === "string" ? q.answer : undefined,
+    };
   });
 
-  // if nothing came back, synthesize a single placeholder question
-  const safeQuestions = questions.length > 0
-    ? questions
-    : [{
-      type: quizType === "mcq" ? "mcq" : "short",
-      ...(quizType === "mcq"
-        ? { prompt: "Sample question generated from your material.", choices: ["Yes", "No"], answerIndex: 0 }
-        : { prompt: "Write a short answer based on your material.", answer: undefined }),
-    }];
+  const safeQuestions =
+    questions.length > 0
+      ? questions
+      : [
+          quizType === "mcq"
+            ? {
+                type: "mcq",
+                prompt: "Sample question generated from your material.",
+                choices: ["Yes", "No"],
+                answerIndex: 0,
+              }
+            : {
+                type: "short",
+                prompt: "Write a short answer based on your material.",
+                answer: undefined,
+              },
+        ];
 
   return {
     id: "preview",
@@ -220,8 +221,7 @@ function normalizeToQuiz(raw, { quizType, durationMin, classId, fallbackCount = 
   };
 }
 
-
-// --- tiny helper to show the first zod error nicely
+/* --- show first Zod error (unchanged) --- */
 function showZodError(err) {
   try {
     const issues = err?.issues || err?.errors || [];
@@ -230,10 +230,9 @@ function showZodError(err) {
       const where = Array.isArray(first?.path) ? first.path.join(".") : "field";
       return `${where}: ${first?.message || "Invalid input"}`;
     }
-  } catch { }
+  } catch {}
   return "Validation failed.";
 }
-
 
 export default function QuizView() {
   const params = useParams();
@@ -253,19 +252,25 @@ export default function QuizView() {
   const [titleOpen, setTitleOpen] = useState(false);
   const [initialTitle, setInitialTitle] = useState("");
 
-  // track saved quiz so "Link" requires a saved quiz first
   const [savedQuizId, setSavedQuizId] = useState(null);
-
   const inputRef = useRef(null);
 
-  // --- helper to create a share id + token ---
+  // revoke preview URLs on unmount
+  useEffect(() => {
+    return () => {
+      files.forEach((f) => {
+        try { URL.revokeObjectURL(f.url); } catch {}
+      });
+    };
+  }, [files]);
+
   function makeShareId() {
     const id = (globalThis.crypto?.randomUUID?.() ?? `pid_${Date.now()}`).replace(/-/g, "");
     const token =
       globalThis.crypto?.getRandomValues
         ? Array.from(globalThis.crypto.getRandomValues(new Uint8Array(12)))
-          .map((b) => b.toString(16).padStart(2, "0"))
-          .join("")
+            .map((b) => b.toString(16).padStart(2, "0"))
+            .join("")
         : Math.random().toString(16).slice(2) + Math.random().toString(16).slice(2);
     return { id, token };
   }
@@ -295,9 +300,7 @@ export default function QuizView() {
   const removePreview = (idx) => {
     setFiles((prev) => {
       const copy = [...prev];
-      try {
-        URL.revokeObjectURL(copy[idx]?.url);
-      } catch { }
+      try { URL.revokeObjectURL(copy[idx]?.url); } catch {}
       copy.splice(idx, 1);
       return copy;
     });
@@ -310,53 +313,6 @@ export default function QuizView() {
   );
 
   /* ---------------- generate ---------------- */
-  // const generateQuiz = async () => {
-  //   if (!classId) {
-  //     toast.error("No class selected. Open this page from /classes/[classid].");
-  //     return;
-  //   }
-  //   if (!canGenerate || generating) return;
-  //   setGenerating(true);
-  //   try {
-  //     const data = await generateQuizAPI(String(classId), {
-  //       material,
-  //       quizType,
-  //       difficulty,
-  //       count,
-  //     });
-
-  //     // attach duration + type into meta
-  //     const withMeta = {
-  //       ...data,
-  //       meta: {
-  //         ...(data.meta || {}),
-  //         durationMin,
-  //         type: quizType,
-  //       },
-  //     };
-
-  //     setQuiz({ id: "preview", ...withMeta });
-
-  //     // optional: keep a copy for same-tab preview page
-  //     sessionStorage.setItem(
-  //       "inquiz_preview",
-  //       JSON.stringify({ classId, quiz: { ...withMeta } })
-  //     );
-
-  //     // after generation, it's a new preview (not saved yet)
-  //     setSavedQuizId(null);
-  //     requestAnimationFrame(() => {
-  //       const el = document.getElementById("quiz-preview");
-  //       if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-  //     });
-  //   } catch (e) {
-  //     console.error(e);
-  //     toast.error("Failed to generate quiz.");
-  //   } finally {
-  //     setGenerating(false);
-  //   }
-  // };
-
   const generateQuiz = async () => {
     if (!classId) {
       toast.error("No class selected. Open this page from /classes/[classid].");
@@ -373,15 +329,10 @@ export default function QuizView() {
         count,
       });
 
-      // 🛡️ normalize first, then Zod-validate
       const normalized = normalizeToQuiz(data, { quizType, durationMin, classId });
-
-      // ✅ Zod final guard (throws if still invalid)
-      const valid = Quiz.parse(normalized);
-
+      const valid = Quiz.parse(normalized); // Zod guard
       setQuiz(valid);
 
-      // store for same-tab preview page
       sessionStorage.setItem(
         "inquiz_preview",
         JSON.stringify({ classId, quiz: valid })
@@ -393,7 +344,6 @@ export default function QuizView() {
       });
     } catch (e) {
       console.error(e);
-      // if Zod error, show the first issue for clarity
       const msg = e?.issues?.[0]?.message || "Failed to generate quiz.";
       toast.error(msg);
     } finally {
@@ -401,32 +351,17 @@ export default function QuizView() {
     }
   };
 
-
-
-
   /* ---------------- quick preview scroll ---------------- */
   const previewNow = () => {
-    if (!quiz) {
-      toast("Generate a quiz first", { icon: "⚠️" });
-      return;
-    }
+    if (!quiz) return toast("Generate a quiz first", { icon: "⚠️" });
     document.getElementById("quiz-preview")?.scrollIntoView({ behavior: "smooth" });
   };
 
   /* ---------------- copy link (requires saved quiz first) ---------------- */
   const copyPreviewLink = async () => {
-    if (!quiz) {
-      toast("Generate a quiz first", { icon: "⚠️" });
-      return;
-    }
-    if (!classId) {
-      toast.error("Missing class id");
-      return;
-    }
-    if (!savedQuizId) {
-      toast.error("Please save the quiz first before sharing the link.");
-      return;
-    }
+    if (!quiz) return toast("Generate a quiz first", { icon: "⚠️" });
+    if (!classId) return toast.error("Missing class id");
+    if (!savedQuizId) return toast.error("Please save the quiz first before sharing the link.");
 
     const { id: pid2, token: t } = makeShareId();
     try {
@@ -435,7 +370,7 @@ export default function QuizView() {
         JSON.stringify({
           classId: String(classId),
           token: t,
-          quiz,            // includes title
+          quiz,
           createdAt: Date.now(),
         })
       );
@@ -462,11 +397,9 @@ export default function QuizView() {
     setMaterial("");
     setFiles((prev) => {
       prev.forEach((p) => {
-        try {
-          URL.revokeObjectURL(p.url);
-        } catch { }
+        try { URL.revokeObjectURL(p.url); } catch {}
       });
-      return [];
+    return [];
     });
     setQuiz(null);
     setSavedQuizId(null);
@@ -476,10 +409,7 @@ export default function QuizView() {
   /* ---------------- save ---------------- */
   const saveAndView = async () => {
     if (!quiz || saving) return;
-    if (!classId) {
-      toast.error("Missing class id");
-      return;
-    }
+    if (!classId) return toast.error("Missing class id");
     setInitialTitle(quiz.title || "");
     setTitleOpen(true);
   };
@@ -488,18 +418,8 @@ export default function QuizView() {
     setTitleOpen(false);
     setSaving(true);
     const quizId = `q_${Date.now()}`;
-    // const toSave = {
-    //   id: quizId,
-    //   classId: String(classId),
-    //   title: finalTitle || "Untitled Quiz",
-    //   createdAt: new Date().toISOString(),
-    //   meta: { ...(quiz.meta || {}), durationMin },
-    //   questions: quiz.questions,
-    // };
-
 
     try {
-
       const toSave = {
         id: quizId,
         classId: String(classId),
@@ -509,16 +429,9 @@ export default function QuizView() {
         questions: quiz.questions,
       };
 
-      // ✅ Zod guard — throws if something is off
-      const valid = Quiz.parse(toSave);
-
-      // then save "valid"
+      const valid = Quiz.parse(toSave); // Zod guard
       localStorage.setItem(`inquiz_quiz_${quizId}`, JSON.stringify(valid));
 
-      // Save full quiz
-      // localStorage.setItem(`inquiz_quiz_${quizId}`, JSON.stringify(toSave));
-
-      // Update class index
       const idxKey = `inquiz_idx_${classId}`;
       const idx = JSON.parse(localStorage.getItem(idxKey) || "[]");
       localStorage.setItem(
@@ -526,25 +439,22 @@ export default function QuizView() {
         JSON.stringify([
           {
             id: quizId,
-            title: toSave.title,
-            createdAt: toSave.createdAt,
+            title: valid.title,
+            createdAt: valid.createdAt,
             count: (quiz?.questions || []).length,
-            durationMin: toSave.meta?.durationMin ?? null,
-            type: toSave.meta?.type ?? quizType,
+            durationMin: valid.meta?.durationMin ?? null,
+            type: valid.meta?.type ?? quizType,
           },
           ...idx,
         ])
       );
 
-      // reflect saved id so "Link" is allowed
       setSavedQuizId(quizId);
-      // also update the quiz in memory with final title for preview
-      setQuiz((q) => (q ? { ...q, title: toSave.title } : q));
-
+      setQuiz((q) => (q ? { ...q, title: valid.title } : q));
       toast.success("Quiz saved successfully!");
     } catch (e) {
       console.error("Failed to save quiz:", e);
-      toast.error("Save failed");
+      toast.error(showZodError(e) || "Save failed");
     } finally {
       setSaving(false);
     }
@@ -688,7 +598,6 @@ export default function QuizView() {
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
-                    {/* # Questions */}
                     <div className="col-span-2">
                       <label className="block text-xs text-gray-500 mb-1"># Questions</label>
                       <input
@@ -703,7 +612,6 @@ export default function QuizView() {
                       />
                     </div>
 
-                    {/* Duration */}
                     <div className="col-span-2">
                       <DurationPicker minutes={durationMin} setMinutes={setDurationMin} />
                     </div>
@@ -781,12 +689,8 @@ export default function QuizView() {
                       bg-gradient-to-r from-[#2B7A78] via-[#3AAFA9] to-[#7ED0B6] 
                       hover:shadow-lg transition disabled:opacity-60 disabled:cursor-not-allowed"
                   >
-                    {/* sheen effect */}
-                    <span
-                      className="pointer-events-none absolute -left-12 top-0 h-full w-10 rotate-12 bg-white/40 
-                        opacity-0 group-hover:opacity-100 translate-x-0 
-                        group-hover:translate-x-[220%] transition-all duration-700"
-                    />
+                    <span className="pointer-events-none absolute -left-12 top-0 h-full w-10 rotate-12 bg-white/40 
+                      opacity-0 group-hover:opacity-100 translate-x-0 group-hover:translate-x-[220%] transition-all duration-700" />
                     <Save size={16} />
                     {saving ? "Saving…" : "Save"}
                   </button>
@@ -803,7 +707,12 @@ export default function QuizView() {
         </div>
       </SlideUp>
 
-      <TitleModal open={titleOpen} onClose={() => setTitleOpen(false)} onConfirm={doSave} initialTitle={initialTitle} />
+      <TitleModal
+        open={titleOpen}
+        onClose={() => setTitleOpen(false)}
+        onConfirm={doSave}
+        initialTitle={initialTitle}
+      />
     </>
   );
 }
@@ -813,8 +722,11 @@ function TypePill({ label, active, onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-xl px-3 py-2 text-sm font-semibold transition ${active ? "bg-[#2E5EAA] text-white shadow-sm" : "bg-white text-[#2B2D42] border border-gray-300/70 hover:bg-gray-50"
-        }`}
+      className={`rounded-xl px-3 py-2 text-sm font-semibold transition ${
+        active
+          ? "bg-[#2E5EAA] text-white shadow-sm"
+          : "bg-white text-[#2B2D42] border border-gray-300/70 hover:bg-gray-50"
+      }`}
     >
       {label}
     </button>

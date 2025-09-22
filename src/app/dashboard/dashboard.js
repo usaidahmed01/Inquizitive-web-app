@@ -1,7 +1,7 @@
 'use client';
 
 import BlurText from '../_components/BlurText';
-import { Plus } from 'lucide-react';
+import { Plus, BookOpen } from 'lucide-react';
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import FancyClassCard from './_components/FancyClassCard';
@@ -11,8 +11,8 @@ import toast from 'react-hot-toast';
 export default function DashboardPage() {
   const [classes, setClasses] = useState([
     // Start empty to see the new empty state:
-    { id: 'c1', title: 'Software Project Management', sem: '4' , code: '101', dept: 'CS', section: 'B', students: 42 },
-    { id: 'c2', title: 'Data Communication', sem: '3' , code: '301', dept: 'CS', section: 'A', students: 37 },
+    { id: 'c1', title: 'Software Project Management', sem: '4', code: '101', dept: 'CS', section: 'B', students: 42 },
+    { id: 'c2', title: 'Data Communication', sem: '3', code: '301', dept: 'CS', section: 'A', students: 37 },
   ]);
 
   const [openAdd, setOpenAdd] = useState(false);
@@ -64,26 +64,25 @@ export default function DashboardPage() {
         }}
       >
         <div className="relative">
-          {classes.length > 0 && <div className="mx-auto max-w-4xl px-6 mb-4">
-            <h2 className="relative overflow-hidden">
-              <span
-                className="inline-block text-3xl md:text-4xl font-extrabold tracking-tight
-                  bg-gradient-to-r from-gray-900 to-blue-700 bg-clip-text text-transparent drop-shadow-sm"
-              >
-                Your Classes
-              </span>
-            </h2>
-            <p className="mt-2 text-gray-600">
-              Manage semesters, students, and quizzes from here.
-            </p>
-          </div>}
+          {classes.length > 0 &&
+            <div className="mx-auto max-w-4xl px-6 mb-6 text-center md:text-left">
+              <h2 className="text-[26px] md:text-[36px] font-extrabold tracking-tight leading-tight">
+                <span className="bg-gradient-to-r from-[#2E5EAA] to-[#4A8FE7] bg-clip-text text-transparent">
+                  Your Classes
+                </span>
+              </h2>
+              <p className="mt-2 text-gray-300 md:text-gray-600">
+                Manage semesters, students, and quizzes from here.
+              </p>
+            </div>
+          }
 
           {/* CONTENT */}
           <main className="mx-auto max-w-4xl px-6 pb-28 space-y-8">
             {classes.length === 0 ? (
               <EmptyState onAdd={() => setOpenAdd(true)} />
             ) : (
-              
+
               classes.map((cls) => <FancyClassCard key={cls.id} cls={cls} />)
             )}
           </main>

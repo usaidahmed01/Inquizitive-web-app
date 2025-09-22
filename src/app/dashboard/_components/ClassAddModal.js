@@ -6,26 +6,30 @@ import { X } from "lucide-react";
 import Portal from "@/app/_components/Portal";
 
 export default function ClassAddModal({ open, onClose, onCreate }) {
-  const [dept, setDept] = useState("CS");      // "CS" | "SE"
+  const [dept, setDept] = useState("CS");      // "CS" | "SE" | "AI"
   const [title, setTitle] = useState("");      // Course name
   const [code, setCode] = useState("");        // exactly 3 digits
-  const [sem, setsem] = useState(1); // 1..8
+  const [sem, setsem] = useState(1);           // 1..8
   const [section, setSection] = useState("A"); // "A" | "B" (CS only)
   const [errors, setErrors] = useState({});
 
-  // Auto-handle section visibility based on department
+  // Show section *only* for CS. For SE/AI clear it.
   useEffect(() => {
-    if (dept === "SE") setSection("");
-    else if (!section) setSection("A");
+    if (dept === "CS") {
+      if (!section) setSection("A");
+    } else {
+      // SE or AI
+      if (section) setSection("");
+    }
   }, [dept]); // eslint-disable-line
 
-  // Digits-only, max length 3
+  // digits-only, max length 3
   const onCodeChange = (v) => {
     const digits = v.replace(/\D/g, "").slice(0, 3);
     setCode(digits);
   };
 
-  // Live validity for the code field
+  // live validity for the code field
   const codeValid = useMemo(() => {
     if (!/^\d{3}$/.test(code)) return false;
     if (!sem) return false;
@@ -55,10 +59,10 @@ export default function ClassAddModal({ open, onClose, onCreate }) {
 
     const cls = {
       id: "c_" + Math.random().toString(36).slice(2, 9),
-      title: title.trim(),     // course name
-      code,                    // 3-digit string
-      sem,                // 1..8
-      dept,                    // CS | SE
+      title: title.trim(),
+      code,                 // 3-digit string
+      sem,                  // 1..8
+      dept,                 // CS | SE | AI
       section: dept === "CS" ? section : null,
       students: 0,
       nextQuiz: "-",
@@ -84,6 +88,7 @@ export default function ClassAddModal({ open, onClose, onCreate }) {
           <motion.div
             className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            onClick={onClose}
           />
 
           {/* Modal */}
@@ -119,7 +124,7 @@ export default function ClassAddModal({ open, onClose, onCreate }) {
                     Department
                   </label>
                   <div className="flex items-center gap-3">
-                    {["CS", "SE"].map((d) => (
+                    {["CS", "SE", "AI"].map((d) => (
                       <button
                         key={d}
                         type="button"
@@ -129,6 +134,7 @@ export default function ClassAddModal({ open, onClose, onCreate }) {
                             ? "bg-[#2E5EAA] text-white border-transparent shadow-sm"
                             : "bg-white text-[#2B2D42] border-gray-300 hover:bg-gray-50"}`}
                         aria-pressed={dept === d}
+                        title={d}
                       >
                         {d}
                       </button>
@@ -139,10 +145,10 @@ export default function ClassAddModal({ open, onClose, onCreate }) {
                 {/* Divider */}
                 <div className="h-px bg-gray-200" />
 
-                {/* sem (1–8 circle pills) */}
+                {/* Semester (1–8 circle pills) */}
                 <div>
                   <label className="block text-sm font-semibold text-[#2B2D42] mb-2">
-                    sem <span className="text-red-500">*</span>
+                    Semester <span className="text-red-500">*</span>
                   </label>
                   <div className="flex flex-wrap gap-2">
                     {Array.from({ length: 8 }, (_, i) => i + 1).map((n) => (
@@ -155,7 +161,7 @@ export default function ClassAddModal({ open, onClose, onCreate }) {
                             ? "bg-[#81B29A] text-white border-transparent shadow-sm"
                             : "bg-white text-[#2B2D42] border-gray-300 hover:bg-gray-50"}`}
                         aria-pressed={sem === n}
-                        title={`sem ${n}`}
+                        title={`Semester ${n}`}
                       >
                         {n}
                       </button>
@@ -189,7 +195,7 @@ export default function ClassAddModal({ open, onClose, onCreate }) {
                 {/* Divider */}
                 <div className="h-px bg-gray-200" />
 
-                {/* Course Code (exactly 3 digits, must start with sem) */}
+                {/* Course Code */}
                 <div>
                   <label className="block text-sm font-semibold text-[#2B2D42] mb-2">
                     Course Code <span className="text-red-500">*</span>
@@ -218,17 +224,38 @@ export default function ClassAddModal({ open, onClose, onCreate }) {
                   )}
                 </div>
 
-                {/* Divider (only show section block for CS) */}
-                {dept === "CS" && <div className="h-px bg-gray-200" />}
-
-                {/* Section (circle A/B) */}
-                <AnimatePresence initial={false}>
+                {/* Smooth divider (only when CS) */}
+                <AnimatePresence initial={false} mode="sync">
                   {dept === "CS" && (
                     <motion.div
+                      key="divider"
+                      initial={{ opacity: 0, scaleX: 0, originX: 0 }}
+                      animate={{ opacity: 1, scaleX: 1 }}
+                      exit={{ opacity: 0, scaleX: 0 }}
+                      transition={{ type: "spring", stiffness: 200, damping: 26 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="h-px bg-gray-200" />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* Section (A/B) — CS only */}
+                <AnimatePresence initial={false} mode="sync">
+                  {dept === "CS" ? (
+                    <motion.div
                       key="section"
-                      initial={{ opacity: 0, y: -6 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -6 }}
+                      initial={{ height: 0, opacity: 0, y: -6 }}
+                      animate={{ height: "auto", opacity: 1, y: 0 }}
+                      exit={{ height: 0, opacity: 0, y: -6 }}
+                      transition={{
+                        // smoother spring
+                        type: "spring",
+                        stiffness: 160,
+                        damping: 24,
+                        mass: 0.7
+                      }}
+                      className="overflow-hidden will-change-transform"
                     >
                       <label className="block text-sm font-semibold text-[#2B2D42] mb-2">
                         Section <span className="text-red-500">*</span>
@@ -240,7 +267,7 @@ export default function ClassAddModal({ open, onClose, onCreate }) {
                             type="button"
                             onClick={() => setSection(s)}
                             className={`h-10 w-10 rounded-full border transition font-semibold flex items-center justify-center
-                              ${section === s
+              ${section === s
                                 ? "bg-[#81B29A] text-white border-transparent shadow-sm"
                                 : "bg-white text-[#2B2D42] border-gray-300 hover:bg-gray-50"}`}
                             aria-pressed={section === s}
@@ -253,6 +280,23 @@ export default function ClassAddModal({ open, onClose, onCreate }) {
                       {errors.section && (
                         <p className="text-xs text-red-500 mt-1">{errors.section}</p>
                       )}
+                    </motion.div>
+                  ) : (
+                    // Optional hint when CS is not selected
+                    <motion.div
+                      key="no-section"
+                      initial={{ height: 0, opacity: 0, y: -4 }}
+                      animate={{ height: "auto", opacity: 1, y: 0 }}
+                      exit={{ height: 0, opacity: 0, y: -4 }}
+                      transition={{ type: "spring", stiffness: 160, damping: 24, mass: 0.7 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="mt-1">
+                        <span className="inline-flex items-center gap-2 text-xs text-gray-600 bg-gray-100/80 border border-gray-200 rounded-full px-3 py-1">
+                          <span className="inline-block h-2 w-2 rounded-full bg-gray-400" />
+                          Section not required for {dept}.
+                        </span>
+                      </div>
                     </motion.div>
                   )}
                 </AnimatePresence>

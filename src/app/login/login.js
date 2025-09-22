@@ -1,428 +1,219 @@
-// 'use client';
+"use client";
 
-// import { LoginSchema } from '@/schemas/auth';
-// import Link from 'next/link';
-// import { motion } from 'framer-motion';
-// import Image from 'next/image';
-// import { useRef, useState } from 'react';
-// import VenomBeams from '../_components/VenomBeams';
-// import { useRouter } from 'next/navigation';
-// import { Eye, EyeOff, AlertTriangle, Mail, Lock } from 'lucide-react';
-// import './login.css';
+/**
+ * LoginPage
+ * - Faculty login screen (client component).
+ * - Validates with Zod schema (email/password) — semantics unchanged.
+ * - Subtle 3D tilt on desktop; disabled on touch / reduced-motion.
+ *
+ * NOTE: Business logic intentionally unchanged. This is readability polish only.
+ * TODO: put you db here (wire backend auth later yk)
+ */
 
-// export default function LoginPage() {
-//   const router = useRouter();
-//   const cardRef = useRef(null);
+import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
+import { AlertTriangle, Eye, EyeOff, Lock, Mail, User } from "lucide-react";
+import VenomBeams from "../_components/VenomBeams";
+import { LoginSchema } from "@/schemas/auth";
+import "./login.css";
 
-//   // form state
-//   const [email, setEmail] = useState('');
-//   const [password, setPassword] = useState('');
-
-//   // UI state
-//   const [shake, setShake] = useState(false);
-//   const [submitting, setSubmitting] = useState(false);
-//   const [capsOn, setCapsOn] = useState(false);
-
-//   // validation
-//   const parsed = LoginSchema.safeParse({ email, password });
-//   const canSubmit = parsed.success && !submitting;
-
-//   const emailValid = email ? LoginSchema.shape.email.safeParse(email).success : false;
-//   const passwordValid = password ? LoginSchema.shape.password.safeParse(password).success : false;
-
-//   // tilt (ignore when hovering form controls to avoid weirdness)
-//   const handleMove = (e) => {
-//     const card = cardRef.current;
-//     if (!card) return;
-
-//     const target = e.target;
-//     if (target && target.closest('input, button, a, .no-tilt')) return;
-
-//     const rect = card.getBoundingClientRect();
-//     const x = e.clientX - rect.left;
-//     const y = e.clientY - rect.top;
-//     const px = x / rect.width - 0.5;
-//     const py = y / rect.height - 0.5;
-//     const max = 10;
-//     const rx = -(py * max);
-//     const ry = px * max;
-//     card.style.transform = `rotateX(${rx}deg) rotateY(${ry}deg) translateZ(0)`;
-//   };
-
-//   const handleLeave = () => {
-//     const card = cardRef.current;
-//     if (!card) return;
-//     card.style.transform = `rotateX(0deg) rotateY(0deg) translateZ(0)`;
-//   };
-
-//   // caps lock detector (for password field)
-//   const updateCapsFromEvent = (e) => {
-//     const getMod =
-//       e && typeof e.getModifierState === 'function'
-//         ? e.getModifierState('CapsLock')
-//         : false;
-//     setCapsOn(!!getMod);
-//   };
-
-//   // submit
-//   const onSubmit = (e) => {
-//     e.preventDefault();
-//     const r = LoginSchema.safeParse({ email, password });
-//     if (!r.success) return setShake(true), setTimeout(() => setShake(false), 450);
-//     // TODO: backend login with r.data
-//     router.push("/dashboard");
-//   };
-
-//   return (
-//     <div
-//       className="relative flex items-center justify-center min-h-screen bg-cover bg-center p-6"
-//       style={{
-//         backgroundImage: "url('/bgg.png')",
-//         backgroundRepeat: 'no-repeat',
-//         backgroundSize: 'cover',
-//         backgroundPosition: 'center',
-//       }}
-//     >
-//       {/* Venom beams over the bg, under the card */}
-//       <VenomBeams
-//         className="absolute inset-0 w-full h-full z-0"
-//         colors={['#2E5EAA', '#81B29A', '#4A8FE7']}
-//         density={14}
-//         speed={1.0}
-//         opacity={0.7}
-//       />
-
-//       <motion.div
-//         initial={{ opacity: 0, y: 28 }}
-//         animate={{ opacity: 1, y: 0 }}
-//         transition={{ duration: 0.40, ease: "easeOut", delay: 0.05 }}
-//         className="w-full flex justify-center"
-//       >
-//         <motion.div
-//           className="tilt-container relative z-10 w-full max-w-md"
-//           animate={shake ? { x: [0, -10, 10, -8, 8, -4, 4, 0] } : { x: 0 }}
-//           transition={{ duration: 0.45, ease: 'easeInOut' }}
-//         >
-//           <div
-//             ref={cardRef}
-//             onMouseMove={handleMove}
-//             onMouseLeave={handleLeave}
-//             className="tilt-card bg-[#F8F9FA] shadow-lg rounded-xl overflow-hidden p-8 transform-gpu will-change-transform [transform-style:preserve-3d] w-full"
-//             style={{ minWidth: 320 }}
-//           >
-//             {/* Logo */}
-//             <div className="w-full h-32 rounded-lg mb-4 flex items-center justify-center no-tilt">
-//               <Image src="/lOGO.svg" alt="logo" width={250} height={250} />
-//             </div>
-
-//             <h1 className="text-2xl font-bold text-center mb-6" style={{ color: '#2B2D42' }}>
-//               Faculty Login
-//             </h1>
-
-//             <form className="space-y-5" onSubmit={onSubmit} noValidate>
-//               {/* EMAIL */}
-//               <div className="space-y-1">
-//                 {/* icon + input only */}
-//                 <div className="relative">
-//                   <Mail
-//                     className="absolute left-3 inset-y-0 my-auto text-gray-400 pointer-events-none"
-//                     size={18}
-//                   />
-//                   <input
-//                     type="email"
-//                     value={email}
-//                     onChange={(e) => setEmail(e.target.value.trim())}
-//                     placeholder="@teacher.com"
-//                     className={`w-full h-12 pl-10 pr-4 rounded-lg border outline-none focus:outline-none focus:ring no-tilt
-//         ${email.length === 0
-//                         ? 'border-gray-200 focus:ring-[#2E5EAA]'
-//                         : emailValid
-//                           ? 'border-green-400 focus:ring-green-400'
-//                           : 'border-red-400 focus:ring-red-400'
-//                       }`}
-//                   />
-//                 </div>
-
-//                 {/* helper OUTSIDE so it doesn't affect icon centering */}
-//                 {email.length > 0 && !emailValid && (
-//                   <p className="text-xs text-red-600">Enter a valid email address.</p>
-//                 )}
-//               </div>
-
-//               {/* PASSWORD */}
-//               <div className="space-y-1">
-//                 {/* input + icons only (relative wrapper) */}
-//                 <div className="relative">
-//                   {/* Left lock icon */}
-//                   <Lock
-//                     className="absolute left-3 inset-y-0 my-auto text-gray-400 pointer-events-none"
-//                     size={18}
-//                   />
-
-//                   <input
-//                     type="password"
-//                     value={password}
-//                     onChange={(e) => setPassword(e.target.value)}
-//                     onKeyUp={updateCapsFromEvent}
-//                     onKeyDown={updateCapsFromEvent}
-//                     onFocus={updateCapsFromEvent}
-//                     onBlur={() => setCapsOn(false)}
-//                     placeholder="●●●●●●"
-//                     className={`w-full h-12 pl-10 pr-12 rounded-lg border outline-none focus:outline-none focus:ring no-tilt
-//         ${password.length === 0
-//                         ? "border-gray-200 focus:ring-[#2E5EAA]"
-//                         : passwordValid
-//                           ? "border-green-400 focus:ring-green-400"
-//                           : "border-red-400 focus:ring-red-400"
-//                       }`}
-//                     aria-invalid={!passwordValid && password.length > 0}
-//                     aria-describedby="password-help"
-//                   />
-//                 </div>
-
-//                 {/* Caps lock hint lives OUTSIDE, so it doesn't affect icon centering */}
-//                 <div
-//                   className={`flex items-center gap-1 text-xs transition-opacity ${capsOn ? "opacity-100" : "opacity-0"
-//                     }`}
-//                   id="password-help"
-//                 >
-//                   <AlertTriangle size={14} className="text-amber-500" />
-//                   <span className="text-amber-600">Caps Lock is ON</span>
-//                 </div>
-
-//                 {password.length > 0 && !passwordValid && (
-//                   <p className="text-xs text-red-600">Password must be at least 6 characters.</p>
-//                 )}
-//               </div>
-
-//               {/* SUBMIT */}
-//               <div className="flex justify-center">
-//                 <button
-//                   type="submit"
-//                   disabled={!canSubmit}
-//                   className={`loginbtn select-none ${!canSubmit ? 'opacity-60 cursor-not-allowed' : ''} no-tilt`}
-//                 >
-//                   {submitting ? '…' : 'Login'}
-//                 </button>
-//               </div>
-//             </form>
-
-//             <p className="mt-6 text-center text-sm" style={{ color: '#2B2D42' }}>
-//               Don’t have an account?{' '}
-//               <Link href="/signup" className="text-primary font-semibold hover:underline no-tilt">
-//                 Sign Up
-//               </Link>
-//             </p>
-//           </div>
-//         </motion.div>
-//       </motion.div >
-//     </div>
-//   );
-// }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-'use client';
-
-import { LoginSchema } from '@/schemas/auth';
-import Link from 'next/link';
-import { motion } from 'framer-motion';
-import Image from 'next/image';
-import { useEffect, useRef, useState } from 'react';
-import VenomBeams from '../_components/VenomBeams';
-import { useRouter } from 'next/navigation';
-import { Eye, EyeOff, AlertTriangle, Mail, Lock, User } from 'lucide-react';
-import './login.css';
+// ———————————————————————————————————————————————————————————————
+// Component
+// ———————————————————————————————————————————————————————————————
 
 export default function LoginPage() {
   const router = useRouter();
+
+  /** 3D tilt card container */
   const cardRef = useRef(null);
 
-  // form state
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  // ——— Form state
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
-  // UI state
-  const [shake, setShake] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [capsOn, setCapsOn] = useState(false);
-  const [showPw, setShowPw] = useState(false);
+  // ——— UI state
+  const [isShaking, setIsShaking] = useState(false); // little wiggle on invalid submit
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCapsLockOn, setIsCapsLockOn] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
-  // responsive flags
-  const [isTouch, setIsTouch] = useState(false);
-  const [isSmall, setIsSmall] = useState(false);
-  const [prefersReduced, setPrefersReduced] = useState(false);
+  // ——— Responsive / environment flags
+  const [isTouchDevice, setIsTouchDevice] = useState(false);
+  const [isSmallScreen, setIsSmallScreen] = useState(false);
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
 
+  // Detect touch, small screen, and reduced motion preferences (client-only)
   useEffect(() => {
-    const touch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-    setIsTouch(touch);
-    const mqSmall = window.matchMedia('(max-width: 640px)');
-    const mqReduce = window.matchMedia('(prefers-reduced-motion: reduce)');
-    setIsSmall(mqSmall.matches);
-    setPrefersReduced(mqReduce.matches);
+    const touch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
+    setIsTouchDevice(touch);
 
-    const onSmall = (e) => setIsSmall(e.matches);
-    const onReduce = (e) => setPrefersReduced(e.matches);
-    mqSmall.addEventListener?.('change', onSmall);
-    mqReduce.addEventListener?.('change', onReduce);
+    const mqSmall = window.matchMedia("(max-width: 640px)");
+    const mqReduce = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+    setIsSmallScreen(mqSmall.matches);
+    setPrefersReducedMotion(mqReduce.matches);
+
+    const onSmallChange = (e) => setIsSmallScreen(e.matches);
+    const onReduceChange = (e) => setPrefersReducedMotion(e.matches);
+
+    mqSmall.addEventListener?.("change", onSmallChange);
+    mqReduce.addEventListener?.("change", onReduceChange);
+
     return () => {
-      mqSmall.removeEventListener?.('change', onSmall);
-      mqReduce.removeEventListener?.('change', onReduce);
+      mqSmall.removeEventListener?.("change", onSmallChange);
+      mqReduce.removeEventListener?.("change", onReduceChange);
     };
   }, []);
 
-  // zod validation (live)
+  // ——— Validation (live) — keep your semantics exactly
   const parsed = LoginSchema.safeParse({ email, password });
-  const canSubmit = parsed.success && !submitting;
-  const emailValid = email ? LoginSchema.shape.email.safeParse(email).success : false;
-  const passwordValid = password ? LoginSchema.shape.password.safeParse(password).success : false;
+  const canSubmit = parsed.success && !isSubmitting;
 
-  // tilt (disabled on touch or reduced motion)
-  const tiltEnabled = !isTouch && !prefersReduced;
+  const isEmailValid = email ? LoginSchema.shape.email.safeParse(email).success : false;
+  const isPasswordValid = password ? LoginSchema.shape.password.safeParse(password).success : false;
 
-  const handleMove = (e) => {
+  // ——— Tilt effect (disabled on touch or reduced motion)
+  const tiltEnabled = !isTouchDevice && !prefersReducedMotion;
+
+  /** Handle pointer movement for subtle 3D tilt */
+  const handleTiltMove = (e) => {
     if (!tiltEnabled) return;
     const card = cardRef.current;
     if (!card) return;
 
+    // Don't tilt when hovering interactives to avoid weirdness
     const target = e.target;
-    if (target && target.closest('input, button, a, .no-tilt')) return;
+    if (target && target.closest("input, button, a, .no-tilt")) return;
 
     const rect = card.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-    const px = x / rect.width - 0.5;
+
+    const px = x / rect.width - 0.5; // -0.5 .. 0.5
     const py = y / rect.height - 0.5;
-    const max = 10;
-    const rx = -(py * max);
-    const ry = px * max;
-    card.style.transform = `rotateX(${rx}deg) rotateY(${ry}deg) translateZ(0)`;
+
+    const MAX_DEG = 10;
+    const rotateX = -(py * MAX_DEG);
+    const rotateY = px * MAX_DEG;
+
+    card.style.transform = `rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateZ(0)`;
   };
 
-  const handleLeave = () => {
+  /** Reset tilt on leave */
+  const handleTiltLeave = () => {
     if (!tiltEnabled) return;
     const card = cardRef.current;
     if (!card) return;
     card.style.transform = `rotateX(0deg) rotateY(0deg) translateZ(0)`;
   };
 
-  // caps lock detector (for password field)
-  const updateCapsFromEvent = (e) => {
-    const getMod =
-      e && typeof e.getModifierState === 'function'
-        ? e.getModifierState('CapsLock')
-        : false;
-    setCapsOn(!!getMod);
+  /** CapsLock detector for the password field */
+  const handleCapsLockState = (e) => {
+    const isOn =
+      e && typeof e.getModifierState === "function" ? e.getModifierState("CapsLock") : false;
+    setIsCapsLockOn(!!isOn);
   };
 
-  // submit
-  const onSubmit = async (e) => {
+  // ——— Submit (no backend yet; keep exact flow)
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const r = LoginSchema.safeParse({ email, password });
-    if (!r.success) {
-      setShake(true);
-      setTimeout(() => setShake(false), 450);
+
+    const result = LoginSchema.safeParse({ email, password });
+    if (!result.success) {
+      // Shake the card a bit to indicate validation issue
+      setIsShaking(true);
+      setTimeout(() => setIsShaking(false), 450);
       return;
     }
-    setSubmitting(true);
+
+    setIsSubmitting(true);
     try {
-      // TODO: backend auth with r.data
-      router.push('/dashboard');
+      // TODO: backend auth with result.data (put you db here yk)
+      router.push("/dashboard");
     } finally {
-      setSubmitting(false);
+      setIsSubmitting(false);
     }
   };
+
+  // ———————————————————————————————————————————————————————————————
+  // Render
+  // ———————————————————————————————————————————————————————————————
 
   return (
     <div
-      className="relative flex items-center justify-center min-h-screen bg-cover bg-center p-4 sm:p-6"
+      className="relative flex min-h-screen items-center justify-center bg-cover bg-center p-4 sm:p-6"
       style={{
         backgroundImage: "url('/bgg.png')",
-        backgroundRepeat: 'no-repeat',
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
+        backgroundRepeat: "no-repeat",
+        backgroundSize: "cover",
+        backgroundPosition: "center",
       }}
     >
-      {/* Venom beams (lighter on phones) */}
+      {/* Decorative beams over bg; slightly lighter on phones */}
       <VenomBeams
-        className="absolute inset-0 w-full h-full z-0"
-        colors={['#2E5EAA', '#81B29A', '#4A8FE7']}
-        density={isSmall ? 6 : 14}
-        speed={isSmall ? 0.6 : 1.0}
-        opacity={isSmall ? 0.45 : 0.7}
+        className="absolute inset-0 z-0 h-full w-full"
+        colors={["#2E5EAA", "#81B29A", "#4A8FE7"]}
+        density={isSmallScreen ? 6 : 14}
+        speed={isSmallScreen ? 0.6 : 1.0}
+        opacity={isSmallScreen ? 0.45 : 0.7}
       />
 
+      {/* Fade-in container */}
       <motion.div
         initial={{ opacity: 0, y: 28 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.40, ease: 'easeOut', delay: 0.05 }}
-        className="w-full flex justify-center"
+        transition={{ duration: 0.4, ease: "easeOut", delay: 0.05 }}
+        className="flex w-full justify-center"
       >
+        {/* Shake on invalid submit */}
         <motion.div
           className="tilt-container relative z-10 w-full max-w-md"
-          animate={shake ? { x: [0, -10, 10, -8, 8, -4, 4, 0] } : { x: 0 }}
-          transition={{ duration: 0.45, ease: 'easeInOut' }}
+          animate={isShaking ? { x: [0, -10, 10, -8, 8, -4, 4, 0] } : { x: 0 }}
+          transition={{ duration: 0.45, ease: "easeInOut" }}
         >
+          {/* 3D-tilting card (desktop only) */}
           <div
             ref={cardRef}
-            onMouseMove={handleMove}
-            onMouseLeave={handleLeave}
-            className={`tilt-card bg-[#F8F9FA] rounded-xl overflow-hidden transform-gpu will-change-transform [transform-style:preserve-3d] w-full
-              ${isSmall ? 'p-6 shadow-md' : 'p-8 shadow-lg'}`}
+            onMouseMove={handleTiltMove}
+            onMouseLeave={handleTiltLeave}
+            className={`tilt-card w-full transform-gpu overflow-hidden rounded-xl bg-[#F8F9FA] will-change-transform [transform-style:preserve-3d] ${
+              isSmallScreen ? "p-6 shadow-md" : "p-8 shadow-lg"
+            }`}
             style={{ minWidth: 320 }}
           >
             {/* Logo */}
-            <div className="w-full h-24 sm:h-32 rounded-lg mb-4 flex items-center justify-center no-tilt">
-              <Image src="/lOGO.svg" alt="logo" width={isSmall ? 200 : 250} height={isSmall ? 200 : 250} />
+            <div className="no-tilt mb-4 flex h-24 w-full items-center justify-center rounded-lg sm:h-32">
+              <Image
+                src="/lOGO.svg"
+                alt="logo"
+                width={isSmallScreen ? 200 : 250}
+                height={isSmallScreen ? 200 : 250}
+                priority
+              />
             </div>
 
             {/* Heading with person icon */}
-            <div className="flex items-center justify-center gap-2 mb-5 sm:mb-6">
-              <div className="h-9 w-9 rounded-lg bg-[#2E5EAA]/10 text-[#2E5EAA] grid place-items-center">
-                <User size={18} />
+            <div className="mb-5 flex items-center justify-center gap-2 sm:mb-6">
+              <div className="grid h-9 w-9 place-items-center rounded-lg bg-[#2E5EAA]/10 text-[#2E5EAA]">
+                <User size={18} aria-hidden="true" />
               </div>
-              <h1 className="text-xl sm:text-2xl font-bold" style={{ color: '#2B2D42' }}>
+              <h1 className="text-xl font-bold sm:text-2xl" style={{ color: "#2B2D42" }}>
                 Faculty Login
               </h1>
             </div>
 
-            <form className="space-y-4 sm:space-y-5" onSubmit={onSubmit} noValidate>
+            {/* Form (client-side only; keep semantics the same) */}
+            <form className="space-y-4 sm:space-y-5" onSubmit={handleSubmit} noValidate>
               {/* EMAIL */}
               <div className="space-y-1">
                 <div className="relative">
                   <Mail
-                    className="absolute left-3 inset-y-0 my-auto text-gray-400 pointer-events-none"
+                    className="pointer-events-none absolute inset-y-0 left-3 my-auto text-gray-400"
                     size={18}
+                    aria-hidden="true"
                   />
                   <input
                     type="email"
@@ -431,16 +222,18 @@ export default function LoginPage() {
                     placeholder="@teacher.com"
                     inputMode="email"
                     autoComplete="email"
-                    className={`w-full h-12 pl-10 pr-4 rounded-lg border outline-none focus:outline-none focus:ring no-tilt text-base
-                      ${email.length === 0
-                        ? 'border-gray-200 focus:ring-[#2E5EAA]'
-                        : emailValid
-                          ? 'border-green-400 focus:ring-green-400'
-                          : 'border-red-400 focus:ring-red-400'
-                      }`}
+                    className={`no-tilt h-12 w-full rounded-lg border pl-10 pr-4 text-base outline-none focus:outline-none focus:ring ${
+                      email.length === 0
+                        ? "border-gray-200 focus:ring-[#2E5EAA]"
+                        : isEmailValid
+                        ? "border-green-400 focus:ring-green-400"
+                        : "border-red-400 focus:ring-red-400"
+                    }`}
+                    aria-invalid={email.length > 0 && !isEmailValid}
                   />
                 </div>
-                {email.length > 0 && !emailValid && (
+
+                {email.length > 0 && !isEmailValid && (
                   <p className="text-xs text-red-600">Enter a valid email address.</p>
                 )}
               </div>
@@ -448,51 +241,58 @@ export default function LoginPage() {
               {/* PASSWORD */}
               <div className="space-y-1">
                 <div className="relative">
+                  {/* Left lock icon */}
                   <Lock
-                    className="absolute left-3 inset-y-0 my-auto text-gray-400 pointer-events-none"
+                    className="pointer-events-none absolute inset-y-0 left-3 my-auto text-gray-400"
                     size={18}
+                    aria-hidden="true"
                   />
+
                   <input
-                    type={showPw ? 'text' : 'password'}
+                    type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    onKeyUp={updateCapsFromEvent}
-                    onKeyDown={updateCapsFromEvent}
-                    onFocus={updateCapsFromEvent}
-                    onBlur={() => setCapsOn(false)}
+                    onKeyUp={handleCapsLockState}
+                    onKeyDown={handleCapsLockState}
+                    onFocus={handleCapsLockState}
+                    onBlur={() => setIsCapsLockOn(false)}
                     placeholder="●●●●●●"
                     autoComplete="current-password"
-                    className={`hide-native-reveal w-full h-12 pl-10 pr-12 rounded-lg border outline-none focus:outline-none focus:ring no-tilt text-base
-                      ${password.length === 0
-                        ? 'border-gray-200 focus:ring-[#2E5EAA]'
-                        : passwordValid
-                          ? 'border-green-400 focus:ring-green-400'
-                          : 'border-red-400 focus:ring-red-400'
-                      }`}
-                    aria-invalid={!passwordValid && password.length > 0}
+                    className={`hide-native-reveal no-tilt h-12 w-full rounded-lg border pl-10 pr-12 text-base outline-none focus:outline-none focus:ring ${
+                      password.length === 0
+                        ? "border-gray-200 focus:ring-[#2E5EAA]"
+                        : isPasswordValid
+                        ? "border-green-400 focus:ring-green-400"
+                        : "border-red-400 focus:ring-red-400"
+                    }`}
+                    aria-invalid={!isPasswordValid && password.length > 0}
                     aria-describedby="password-help"
                   />
-                  {/* show/hide toggle */}
+
+                  {/* Show/Hide password toggle (kept as button with no tab-stop to avoid focus jump) */}
                   <button
                     type="button"
-                    onClick={() => setShowPw((s) => !s)}
-                    className="absolute right-3 inset-y-0 my-auto h-8 w-8 grid place-items-center text-gray-500 hover:text-gray-700 no-tilt"
+                    onClick={() => setShowPassword((s) => !s)}
+                    className="no-tilt absolute inset-y-0 right-3 my-auto grid h-8 w-8 place-items-center text-gray-500 hover:text-gray-700"
                     tabIndex={-1}
-                    aria-label={showPw ? 'Hide password' : 'Show password'}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
                   >
-                    {showPw ? <EyeOff size={18} /> : <Eye size={18} />}
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 </div>
 
+                {/* CapsLock helper lives OUTSIDE to keep icons centered */}
                 <div
-                  className={`flex items-center gap-1 text-xs transition-opacity ${capsOn ? 'opacity-100' : 'opacity-0'}`}
+                  className={`flex items-center gap-1 text-xs transition-opacity ${
+                    isCapsLockOn ? "opacity-100" : "opacity-0"
+                  }`}
                   id="password-help"
                 >
-                  <AlertTriangle size={14} className="text-amber-500" />
+                  <AlertTriangle size={14} className="text-amber-500" aria-hidden="true" />
                   <span className="text-amber-600">Caps Lock is ON</span>
                 </div>
 
-                {password.length > 0 && !passwordValid && (
+                {password.length > 0 && !isPasswordValid && (
                   <p className="text-xs text-red-600">Password must be at least 6 characters.</p>
                 )}
               </div>
@@ -502,16 +302,19 @@ export default function LoginPage() {
                 <button
                   type="submit"
                   disabled={!canSubmit}
-                  className={`loginbtn select-none ${!canSubmit ? 'opacity-60 cursor-not-allowed' : ''} no-tilt`}
+                  className={`loginbtn select-none ${
+                    !canSubmit ? "cursor-not-allowed opacity-60" : ""
+                  } no-tilt`}
                 >
-                  {submitting ? '…' : 'Login'}
+                  {isSubmitting ? "…" : "Login"}
                 </button>
               </div>
             </form>
 
-            <p className="mt-5 sm:mt-6 text-center text-sm" style={{ color: '#2B2D42' }}>
-              Don’t have an account?{' '}
-              <Link href="/signup" className="text-primary font-semibold hover:underline no-tilt">
+            {/* Footer link */}
+            <p className="mt-5 text-center text-sm sm:mt-6" style={{ color: "#2B2D42" }}>
+              Don’t have an account?{" "}
+              <Link href="/signup" className="no-tilt font-semibold text-primary hover:underline">
                 Sign Up
               </Link>
             </p>
@@ -521,4 +324,3 @@ export default function LoginPage() {
     </div>
   );
 }
-

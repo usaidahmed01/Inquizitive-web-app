@@ -11,8 +11,7 @@ import {
   ListChecks,
   AlertTriangle,
 } from "lucide-react";
-import { Quiz as QuizSchema } from "@/schemas/quiz"; // the schema you shared earlier
-
+import { Quiz as QuizSchema } from "@/schemas/quiz";
 
 /* ================= Theme & helpers ================= */
 
@@ -22,7 +21,8 @@ const THEME = {
   accent: "#81B29A",
 };
 
-const progressHex = (pct) => (pct >= 80 ? "#22c55e" : pct >= 65 ? "#f59e0b" : pct >= 50 ? "#fb923c" : "#ef4444");
+const progressHex = (pct) =>
+  pct >= 80 ? "#22c55e" : pct >= 65 ? "#f59e0b" : pct >= 50 ? "#fb923c" : "#ef4444";
 
 const fmtSeconds = (s) => {
   s = Math.max(0, s || 0);
@@ -58,7 +58,11 @@ function GradientHeader({ classid, title, totalQ, secondsLeft, submitted, onSubm
           </div>
 
           <div className="flex items-center gap-3 shrink-0">
-            <div className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 bg-white/20 text-white font-semibold">
+            <div
+              className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 bg-white/20 text-white font-semibold"
+              aria-live="polite"
+              aria-atomic="true"
+            >
               <Clock size={16} className={urgent ? "text-red-300" : "opacity-90"} />
               {fmtSeconds(secondsLeft)}
             </div>
@@ -108,45 +112,6 @@ export default function TakeQuizPage() {
 
   /* ---------- load quiz snapshot & init ---------- */
   useEffect(() => {
-    // try {
-    //   if (!pid || !token || !classid) {
-    //     setInvalid(true);
-    //     return;
-    //   }
-    //   const raw = localStorage.getItem(`inquiz_preview_${pid}`);
-    //   const gate = sessionStorage.getItem(`inquiz_allowed_${classid}_${pid}`);
-    //   if (!raw || !gate) {
-    //     setInvalid(true);
-    //     return;
-    //   }
-    //   const snap = JSON.parse(raw);
-    //   if (snap?.token !== token || String(snap?.classId) !== String(classid)) {
-    //     setInvalid(true);
-    //     return;
-    //   }
-
-    //   const qz = snap.quiz || {};
-    //   const qs = Array.isArray(qz.questions) ? qz.questions : [];
-    //   let type = qz?.meta?.type?.toLowerCase?.() || "mixed";
-    //   const durationMin = Number(qz?.meta?.durationMin ?? 20);
-
-    //   // restore autosave
-    //   const saved = JSON.parse(sessionStorage.getItem(`inquiz_run_${pid}`) || "{}");
-    //   setAnswers(saved.answers || {});
-    //   setIdx(Number(saved.idx) || 0);
-
-    //   setQuiz({ ...qz, meta: { ...(qz.meta || {}), type } });
-
-    //   // absolute deadline (+2 min buffer)
-    //   const totalMs = (durationMin + 2) * 60 * 1000;
-    //   endAtRef.current = Date.now() + totalMs;
-    //   setSecondsLeft(Math.max(1, Math.floor((endAtRef.current - Date.now()) / 1000)));
-    // } catch {
-    //   setInvalid(true);
-    // }
-
-
-
     try {
       if (!pid || !token || !classid) {
         setInvalid(true);
@@ -170,8 +135,7 @@ export default function TakeQuizPage() {
 
       // prefer meta.type, but fall back to inference
       let type =
-        (qz?.meta?.type && String(qz.meta.type).toLowerCase()) ||
-        inferTypeFromQuestions(qs);
+        (qz?.meta?.type && String(qz.meta.type).toLowerCase()) || inferTypeFromQuestions(qs);
 
       // clamp duration to 5..120 (and coerce int)
       const durationMin = Math.max(5, Math.min(120, Math.floor(Number(qz?.meta?.durationMin ?? 20))));
@@ -185,11 +149,9 @@ export default function TakeQuizPage() {
         meta: {
           type,
           durationMin,
-          // keep difficulty if your schema has it; else omit
           difficulty: Number.isFinite(qz?.meta?.difficulty) ? Number(qz.meta.difficulty) : 60,
         },
         questions: qs.map((q) => {
-          // normalize each question shape for the schema
           if (Array.isArray(q?.choices)) {
             return {
               type: "mcq",
@@ -209,7 +171,7 @@ export default function TakeQuizPage() {
       // --- Validate with Zod ---
       const parsed = QuizSchema.parse(candidate);
 
-      // If meta.type was inconsistent (e.g., said mcq but questions aren’t), re-infer to be safe
+      // If meta.type was inconsistent, re-infer to be safe
       const ensuredType = (() => {
         const inferred = inferTypeFromQuestions(parsed.questions);
         return parsed.meta.type === inferred ? parsed.meta.type : inferred;
@@ -227,7 +189,7 @@ export default function TakeQuizPage() {
 
       setQuiz(finalQuiz);
 
-      // absolute deadline (+2 min buffer) – your anti-pause timer
+      // absolute deadline (+2 min buffer)
       const totalMs = (finalQuiz.meta.durationMin + 2) * 60 * 1000;
       endAtRef.current = Date.now() + totalMs;
       setSecondsLeft(Math.max(1, Math.floor((endAtRef.current - Date.now()) / 1000)));
@@ -235,8 +197,13 @@ export default function TakeQuizPage() {
       console.error("Invalid quiz data:", err);
       setInvalid(true);
     }
-
   }, [pid, token, classid]);
+
+  /* ---------- keep idx within bounds if questions length changes ---------- */
+  useEffect(() => {
+    if (!quiz) return;
+    setIdx((i) => Math.min(Math.max(0, i), Math.max(0, (quiz.questions?.length || 1) - 1)));
+  }, [quiz?.questions?.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /* ---------- timer (based on absolute endAt) ---------- */
   useEffect(() => {
@@ -246,8 +213,7 @@ export default function TakeQuizPage() {
       setSecondsLeft(remain);
       if (remain <= 0) {
         clearInterval(t);
-        // auto-submit whatever is done
-        setSubmitted(true);
+        setSubmitted(true); // auto-submit
       }
     }, 250);
     return () => clearInterval(t);
@@ -262,14 +228,13 @@ export default function TakeQuizPage() {
   /* ---------- anti-cheat: block paste, copy, context menu ---------- */
   useEffect(() => {
     const onKeyDown = (e) => {
-      const isPasteShortcut = (e.ctrlKey || e.metaKey) && (e.key === "v" || e.key === "V");
-      if (isPasteShortcut) {
-        e.preventDefault();
-      }
-      const isCopyCut = (e.ctrlKey || e.metaKey) && (e.key === "c" || e.key === "x" || e.key === "C" || e.key === "X");
-      if (isCopyCut) {
-        e.preventDefault();
-      }
+      const isPaste = (e.ctrlKey || e.metaKey) && (e.key === "v" || e.key === "V");
+      if (isPaste) e.preventDefault();
+
+      const isCopyCut =
+        (e.ctrlKey || e.metaKey) &&
+        (e.key === "c" || e.key === "x" || e.key === "C" || e.key === "X");
+      if (isCopyCut) e.preventDefault();
     };
     const onContextMenu = (e) => e.preventDefault();
     window.addEventListener("keydown", onKeyDown, { capture: true });
@@ -280,9 +245,7 @@ export default function TakeQuizPage() {
     };
   }, []);
 
-  const handlePasteBlock = (e) => {
-    e.preventDefault();
-  };
+  const handlePasteBlock = (e) => e.preventDefault();
 
   /* ---------- anti-cheat: visibility change & beforeunload ---------- */
   useEffect(() => {
@@ -291,9 +254,10 @@ export default function TakeQuizPage() {
         setFocusViolations((n) => n + 1);
         setShowFocusOverlay(true);
 
-        // Optional time penalty (e.g., -15s) each time they leave
+        // Optional penalty: -15s each time they leave
         const penaltyMs = 15 * 1000;
-        if (endAtRef.current) endAtRef.current = Math.max(Date.now(), endAtRef.current - penaltyMs);
+        if (endAtRef.current)
+          endAtRef.current = Math.max(Date.now(), endAtRef.current - penaltyMs);
       }
     };
     document.addEventListener("visibilitychange", onVis);
@@ -301,7 +265,7 @@ export default function TakeQuizPage() {
     const onBeforeUnload = (e) => {
       if (!submitted) {
         e.preventDefault();
-        e.returnValue = ""; // triggers browser confirmation
+        e.returnValue = "";
       }
     };
     window.addEventListener("beforeunload", onBeforeUnload);
@@ -332,13 +296,16 @@ export default function TakeQuizPage() {
   }, [submitted, quiz, answers]);
 
   const progressPct = useMemo(() => {
-    const answered = Object.values(answers).filter((v) => v !== undefined && v !== "").length;
+    const answered = Object.values(answers).filter(
+      (v) => v !== undefined && v !== ""
+    ).length;
     return Math.round((answered / Math.max(1, totalQ)) * 100);
   }, [answers, totalQ]);
 
   const submitNow = () => {
-    // If unanswered exist, confirm
-    const answered = Object.values(answers).filter((v) => v !== undefined && v !== "").length;
+    const answered = Object.values(answers).filter(
+      (v) => v !== undefined && v !== ""
+    ).length;
     if (answered < totalQ) {
       setShowConfirm(true);
       return;
@@ -348,13 +315,12 @@ export default function TakeQuizPage() {
 
   function inferTypeFromQuestions(questions = []) {
     if (!Array.isArray(questions) || questions.length === 0) return "mixed";
-    const isMcq = questions.every(q => Array.isArray(q?.choices) && q.choices.length >= 2);
-    const isShort = questions.every(q => !Array.isArray(q?.choices));
+    const isMcq = questions.every((q) => Array.isArray(q?.choices) && q.choices.length >= 2);
+    const isShort = questions.every((q) => !Array.isArray(q?.choices));
     if (isMcq) return "mcq";
     if (isShort) return "short";
     return "mixed";
   }
-
 
   /* ---------- confirm submit + results modals ---------- */
   const [showConfirm, setShowConfirm] = useState(false);
@@ -362,7 +328,6 @@ export default function TakeQuizPage() {
 
   useEffect(() => {
     if (submitted) {
-      // small delay for nicer UX
       const t = setTimeout(() => setShowResults(true), 200);
       return () => clearTimeout(t);
     }
@@ -386,7 +351,6 @@ export default function TakeQuizPage() {
   return (
     <div
       className="min-h-screen bg-[#F7FAFF]"
-      // extra safety: block copy/cut at container level
       onCopy={(e) => e.preventDefault()}
       onCut={(e) => e.preventDefault()}
     >
@@ -401,22 +365,25 @@ export default function TakeQuizPage() {
 
       {/* thin progress */}
       <div className="h-1 w-full bg-[#e5e7eb]">
-        <div className="h-1 transition-all" style={{ width: `${progressPct}%`, background: progressHex(progressPct) }} />
+        <div
+          className="h-1 transition-all"
+          style={{ width: `${progressPct}%`, background: progressHex(progressPct) }}
+        />
       </div>
 
       <main className="max-w-5xl mx-auto px-4 py-6">
-        {/* RESULTS PAGE-LOCK modal (appears after submit or time out) */}
+        {/* RESULTS PAGE-LOCK modal */}
         {showResults && (
           <ResultModal
             quizTitle={quiz.title}
             score={score}
             totalQ={totalQ}
-            durationUsed={(quiz?.meta?.durationMin ?? 20) * 60 - (secondsLeft ?? 0)}
+            durationUsed={Math.max(
+              0,
+              (quiz?.meta?.durationMin ?? 20) * 60 - (secondsLeft ?? 0)
+            )}
             onClose={() => {
-              // Keep the modal persistent: do NOT navigate.
-              // If you want to hard stop interaction behind, leave overlay mounted.
-              // User must close tab manually (your requirement).
-              // So we simply keep the modal open and do nothing here.
+              // keep modal persistent
               setShowResults(true);
             }}
           />
@@ -429,19 +396,27 @@ export default function TakeQuizPage() {
             {mode === "mcq" && (
               <section className="space-y-4">
                 {quiz.questions.map((q, i) => (
-                  <div key={i} className="rounded-2xl bg-white border border-black/5 shadow-sm p-5">
+                  <div
+                    key={i}
+                    className="rounded-2xl bg-white border border-black/5 shadow-sm p-5"
+                  >
                     <div className="text-xs text-gray-500">Question {i + 1}</div>
-                    <h2 className="mt-1 text-lg font-semibold text-[#2B2D42]">{q.prompt}</h2>
+                    <h2 className="mt-1 text-lg font-semibold text-[#2B2D42]">
+                      {q.prompt}
+                    </h2>
 
                     {Array.isArray(q?.choices) && q.choices.length > 0 ? (
-                      <ul className="mt-4 grid gap-2">
+                      <ul className="mt-4 grid gap-2" role="radiogroup" aria-label={`Question ${i + 1}`}>
                         {q.choices.map((c, ci) => {
                           const active = answers[i] === ci;
                           return (
                             <li key={ci}>
                               <label
-                                className={`flex items-center gap-3 rounded-xl border px-4 py-3 cursor-pointer transition ${active ? "border-[#2E5EAA] bg-[#F3F8FF]" : "border-gray-200 bg-white hover:bg-gray-50"
-                                  }`}
+                                className={`flex items-center gap-3 rounded-xl border px-4 py-3 cursor-pointer transition ${
+                                  active
+                                    ? "border-[#2E5EAA] bg-[#F3F8FF]"
+                                    : "border-gray-200 bg-white hover:bg-gray-50"
+                                }`}
                               >
                                 <input
                                   type="radio"
@@ -449,6 +424,7 @@ export default function TakeQuizPage() {
                                   className="accent-[#2E5EAA]"
                                   checked={active}
                                   onChange={() => pick(i, ci)}
+                                  aria-label={c}
                                 />
                                 <span className="text-sm">{c}</span>
                               </label>
@@ -483,9 +459,14 @@ export default function TakeQuizPage() {
             {mode === "short" && (
               <section className="space-y-4">
                 {quiz.questions.map((q, i) => (
-                  <div key={i} className="rounded-2xl bg-white border border-black/5 shadow-sm p-5">
+                  <div
+                    key={i}
+                    className="rounded-2xl bg-white border border-black/5 shadow-sm p-5"
+                  >
                     <div className="text-xs text-gray-500">Question {i + 1}</div>
-                    <h2 className="mt-1 text-lg font-semibold text-[#2B2D42]">{q.prompt}</h2>
+                    <h2 className="mt-1 text-lg font-semibold text-[#2B2D42]">
+                      {q.prompt}
+                    </h2>
                     <textarea
                       value={answers[i] || ""}
                       onChange={(e) => pick(i, e.target.value)}
@@ -514,18 +495,27 @@ export default function TakeQuizPage() {
                   <div className="text-xs text-gray-500">
                     Question {idx + 1} / {totalQ}
                   </div>
-                  <h2 className="mt-1 text-lg font-semibold text-[#2B2D42]">{quiz.questions[idx]?.prompt}</h2>
+                  <h2 className="mt-1 text-lg font-semibold text-[#2B2D42]">
+                    {quiz.questions[idx]?.prompt}
+                  </h2>
 
                   <div className="mt-4">
                     {Array.isArray(quiz.questions[idx]?.choices) ? (
-                      <ul className="grid gap-2">
+                      <ul
+                        className="grid gap-2"
+                        role="radiogroup"
+                        aria-label={`Question ${idx + 1}`}
+                      >
                         {quiz.questions[idx].choices.map((c, ci) => {
                           const active = answers[idx] === ci;
                           return (
                             <li key={ci}>
                               <label
-                                className={`flex items-center gap-3 rounded-xl border px-4 py-3 cursor-pointer transition ${active ? "border-[#2E5EAA] bg-[#F3F8FF]" : "border-gray-200 bg-white hover:bg-gray-50"
-                                  }`}
+                                className={`flex items-center gap-3 rounded-xl border px-4 py-3 cursor-pointer transition ${
+                                  active
+                                    ? "border-[#2E5EAA] bg-[#F3F8FF]"
+                                    : "border-gray-200 bg-white hover:bg-gray-50"
+                                }`}
                               >
                                 <input
                                   type="radio"
@@ -533,6 +523,7 @@ export default function TakeQuizPage() {
                                   className="accent-[#2E5EAA]"
                                   checked={active}
                                   onChange={() => pick(idx, ci)}
+                                  aria-label={c}
                                 />
                                 <span className="text-sm">{c}</span>
                               </label>
@@ -590,9 +581,15 @@ export default function TakeQuizPage() {
                           key={i}
                           onClick={() => setIdx(i)}
                           title={`Question ${i + 1}`}
-                          className={`${base} ${current ? "text-white" : answered ? "text-white/90" : "text-white"}`}
+                          className={`${base} ${
+                            current ? "text-white" : answered ? "text-white/90" : "text-white"
+                          }`}
                           style={{
-                            background: current ? THEME.primary : answered ? `${THEME.primary}1F` : "#cbd5e1",
+                            background: current
+                              ? THEME.primary
+                              : answered
+                              ? `${THEME.primary}1F`
+                              : "#cbd5e1",
                           }}
                         >
                           {i + 1}
@@ -676,19 +673,17 @@ function ResultModal({ quizTitle, score, totalQ, durationUsed }) {
     if (p >= 60) return "Good effort! 👍";
     if (p >= 40) return "Keep practicing! 💪";
     return "Don’t give up — you’ve got this! 🌱";
-    // You can customize later using AI.
   })();
 
-  const mins = Math.floor((durationUsed ?? 0) / 60);
-  const secs = (durationUsed ?? 0) % 60;
+  const used = Math.max(0, durationUsed || 0);
+  const mins = Math.floor(used / 60);
+  const secs = used % 60;
 
   return (
     <div className="fixed inset-0 z-[80] grid place-items-center bg-black/50 backdrop-blur-sm">
       <div className="w-[92%] max-w-lg rounded-2xl border border-black/10 shadow-2xl overflow-hidden">
         <div className="relative bg-gradient-to-r from-[#5C9BCF] via-[#8CB8E2] to-[#7FAF9D] p-5">
-          <h3 className="text-white text-xl font-bold">
-            {quizTitle || "Quiz"} • Results
-          </h3>
+          <h3 className="text-white text-xl font-bold">{quizTitle || "Quiz"} • Results</h3>
           <p className="text-white/90 text-sm">Your submission has been recorded.</p>
         </div>
 

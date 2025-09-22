@@ -116,7 +116,7 @@ export default function StudentResultModal({
                     </button>
                     <button
                       onClick={onClose}
-                      className="h-9 w-9 grid place-items-center rounded-full bg-white/15 hover:bg白/25 text-white transition"
+                      className="h-9 w-9 grid place-items-center rounded-full bg-white/15 hover:bg-white/25 text-white transition"
                       aria-label="Close"
                     >
                       <X size={18} />
@@ -136,7 +136,10 @@ export default function StudentResultModal({
                     <NoQuizEmpty />
                   ) : (
                     results.quizzes.map((r) => {
-                      const pct = Math.round((r.score / r.total) * 100);
+                      const pct =
+                        r && Number.isFinite(r?.total) && r.total > 0
+                          ? Math.round((r.score / r.total) * 100)
+                          : 0;
                       const pass = pct >= 50;
                       return (
                         <div
@@ -286,7 +289,7 @@ function EditStudentModal({ open, onClose, student, onSave }) {
                   <label className="block text-xs text-gray-600 mb-1">Seat number</label>
                   <input
                     value={seat}
-                    onChange={(e) => setSeat(e.target.value.trim())}
+                    onChange={(e) => setSeat(e.target.value.toUpperCase().trim())}
                     onBlur={() => setTouched(true)}
                     placeholder="e.g. B23110006177"
                     className={`w-full h-11 rounded-lg border px-3 outline-none focus:ring-2 ${
