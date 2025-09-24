@@ -19,7 +19,7 @@ export const SignupSchema = z.object({
 
 export const JoinClassSchema = z.object({
   name: z.string().min(2, "Full name is required").transform(normalizeFullName),
-  seat: z.string().toUpperCase().regex(reSeat, "Seat No must be B followed by 11 digits (e.g., B12345678901)"),
+  seat: z.string().toUpperCase().regex(reSeat, "Seat No must be B followed by 11 digits (e.g., B23110006177)"),
   email: z.string().trim().regex(reEmail, "Enter a valid email"),
   classId: z.string().min(1),
 });

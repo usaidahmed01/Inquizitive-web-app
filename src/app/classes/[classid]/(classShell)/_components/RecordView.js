@@ -28,10 +28,10 @@ import StudentResultModal from "../record.js/StudentResultModal";
 
 /* ------------------------ Mock seed (unchanged) ------------------------ */
 const SEED_STUDENTS = [
-  { id: "s1", name: "Ayesha Khan",   seat: "B23110006177", email: "ayesha@uni.edu",  average: 86, last: { quiz: "Quiz 3", score: 18, total: 20 } },
-  { id: "s2", name: "Daniyal Raza",  seat: "B23110006172", email: "daniyal@uni.edu", average: 72, last: { quiz: "Quiz 3", score: 15, total: 20 } },
-  { id: "s3", name: "Hira Shah",     seat: "B23110006171", email: "hira@uni.edu",    average: 91, last: { quiz: "Quiz 2", score: 19, total: 20 } },
-  { id: "s4", name: "Moiz Ali",      seat: "B23110006179", email: "moiz@uni.edu",    average: 65, last: { quiz: "Quiz 1", score: 13, total: 20 } },
+  { id: "s1", name: "Ayesha Khan", seat: "B23110006177", email: "ayesha@uni.edu", average: 86, last: { quiz: "Quiz 3", score: 18, total: 20 } },
+  { id: "s2", name: "Daniyal Raza", seat: "B23110006172", email: "daniyal@uni.edu", average: 72, last: { quiz: "Quiz 3", score: 15, total: 20 } },
+  { id: "s3", name: "Hira Shah", seat: "B23110006171", email: "hira@uni.edu", average: 91, last: { quiz: "Quiz 2", score: 19, total: 20 } },
+  { id: "s4", name: "Moiz Ali", seat: "B23110006179", email: "moiz@uni.edu", average: 65, last: { quiz: "Quiz 1", score: 13, total: 20 } },
 ];
 
 /* ------------------------ Local CSS (spinner) ------------------------ */
@@ -91,7 +91,7 @@ export default function RecordView() {
     // stable sort by chosen key/direction
     list.sort((a, b) => {
       const dir = sortDir === "asc" ? 1 : -1;
-      if (sortBy === "name")    return a.name.localeCompare(b.name) * dir;
+      if (sortBy === "name") return a.name.localeCompare(b.name) * dir;
       if (sortBy === "average") return (a.average - b.average) * dir;
       return 0;
     });
@@ -135,7 +135,7 @@ export default function RecordView() {
         quizzes: [
           { id: "q3", title: "Quiz 3", date: "2025-09-10T10:30:00Z", score: 18, total: 20 },
           { id: "q2", title: "Quiz 2", date: "2025-08-28T12:00:00Z", score: 10, total: 20 },
-          { id: "q1", title: "Quiz 1", date: "2025-08-12T09:15:00Z", score: 8,  total: 20 },
+          { id: "q1", title: "Quiz 1", date: "2025-08-12T09:15:00Z", score: 8, total: 20 },
         ],
       };
       setResults(data);
@@ -165,35 +165,145 @@ export default function RecordView() {
     if (openId === id) closeModal();
   };
 
+  // simple CSV escaper (handles commas, quotes, newlines)
+  const csv = (v = "") => {
+    const s = String(v ?? "");
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+
+
   /* export CSV — uses quizTitles derived above (unchanged output intention) */
+
   const handleExport = () => {
     if (students.length === 0) {
       alert("No students to export");
       return;
     }
-    // header row: Name, Seat, ...Quiz N
-    const headers = ["Name", "Seat No", ...quizTitles];
-    const rows = [headers];
 
-    // each student row: Name, Seat, each Quiz score or "-"
+    // TODO: replace these with real values from DB later
+    const meta = {
+      university: "University of Karachi",
+      exam: "(SEMESTER EXAMINATION)",
+      faculty: "FACULTY OF SCIENCE",
+      department: "Computer Science",
+      class: "BS – 2nd year (Sec-B)",
+      teacher: "Dr. Humera Bashir",
+      courseNo: "BSCS-459",
+      courseTitle: "Probability & Statistics",
+      examDate: "22-05-2025",
+    };
+
+    // ---- Build quiz index (ordered) ----
+    // Gather all quiz occurrences across students (preferring s.results; fallback to s.last)
+    const quizSeen = new Map(); // key = canonical title; value = earliest timestamp or insertion order
+    let orderCounter = 0;
+    const asTime = (d) => {
+      const t = Date.parse(d);
+      return Number.isFinite(t) ? t : undefined;
+    };
+
     students.forEach((s) => {
-      const row = [s.name, s.seat];
-      quizTitles.forEach((qt) => {
-        if (s.last?.quiz === qt) row.push(`${s.last.score}/${s.last.total}`);
-        else row.push("-");
+      const results = Array.isArray(s.results) && s.results.length > 0
+        ? s.results
+        : (s.last ? [{ title: s.last.quiz, date: s.last.date, score: s.last.score, total: s.last.total }] : []);
+
+      results.forEach((r) => {
+        if (!r?.title) return;
+        const key = String(r.title);
+        const t = asTime(r.date);
+        if (!quizSeen.has(key)) {
+          quizSeen.set(key, { key, firstTime: t ?? null, order: orderCounter++ });
+        } else {
+          // keep earliest time if any
+          const prev = quizSeen.get(key);
+          if (prev.firstTime == null && t != null) prev.firstTime = t;
+          else if (prev.firstTime != null && t != null && t < prev.firstTime) prev.firstTime = t;
+        }
       });
-      rows.push(row);
     });
 
-    const csv = rows.map((r) => r.join(",")).join("\n");
-    const blob = new Blob([csv], { type: "text/csv" });
+    // Sort keys by date if any date exists; otherwise by first-seen order
+    const quizKeysSorted = Array.from(quizSeen.values())
+      .sort((a, b) => {
+        if (a.firstTime != null && b.firstTime != null) return a.firstTime - b.firstTime;
+        if (a.firstTime != null) return -1;
+        if (b.firstTime != null) return 1;
+        return a.order - b.order;
+      })
+      .map((q) => q.key);
+
+    // Numbered labels: Quiz 1, Quiz 2, ...
+    const numberedQuizLabels = quizKeysSorted.map((_, i) => `Quiz ${i + 1}`);
+
+    // ---- Header block (no “Major Dept / Year / Credit hours”) ----
+    const headerLines = [
+      csv(meta.university),
+      csv(meta.exam),
+      csv(meta.faculty),
+      "",
+      `${csv("Department")},${csv(meta.department)}`,
+      `${csv("Class")},${csv(meta.class)}`,
+      `${csv("Teacher's Name")},${csv(meta.teacher)}`,
+      `${csv("Course No.")},${csv(meta.courseNo)}`,
+      `${csv("Date of Examination held")},${csv(meta.examDate)}`,
+      `${csv("Course Title")},${csv(meta.courseTitle)}`,
+      "", // spacer before the table
+    ];
+
+    // ---- Table header (no Total In Words / Final Grade / Remarks) ----
+    const tableHeader = [
+      "S.#",
+      "Seat No.",
+      "Student's Name",
+      "Terminal 100",
+      ...numberedQuizLabels,
+    ].map(csv).join(",");
+
+    // Helper to get a student's score for a given quiz key
+    const getScoreFor = (student, quizKey) => {
+      // prefer results array
+      if (Array.isArray(student.results) && student.results.length > 0) {
+        const r = student.results.find((q) => q.title === quizKey);
+        return r ? `${r.score}/${r.total}` : "-";
+      }
+      // fallback to last
+      if (student.last?.quiz === quizKey) {
+        const r = student.last;
+        return `${r.score}/${r.total}`;
+      }
+      return "-";
+    };
+
+    // ---- Rows ----
+    const rows = students.map((s, idx) => {
+      const terminal = Math.round(Number(s.average) || 0); // replace with real "Terminal 100" later
+      const quizCells = quizKeysSorted.map((key) => getScoreFor(s, key));
+
+      return [
+        idx + 1,
+        s.seat,
+        s.name,
+        terminal,
+        ...quizCells,
+      ].map(csv).join(",");
+    });
+
+    // ---- Build & download CSV ----
+    const out = [
+      ...headerLines,
+      tableHeader,
+      ...rows,
+    ].join("\n");
+
+    const blob = new Blob([`\uFEFF${out}`], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "class-records.csv";
+    a.download = "class-marksheet.csv";
     a.click();
     URL.revokeObjectURL(url);
   };
+
 
   return (
     <SlideUp>
@@ -416,10 +526,10 @@ export default function RecordView() {
                               s.average >= 80
                                 ? "#4ade80"
                                 : s.average >= 65
-                                ? "#fbbf24"
-                                : s.average >= 50
-                                ? "#fb923c"
-                                : "#f87171"
+                                  ? "#fbbf24"
+                                  : s.average >= 50
+                                    ? "#fb923c"
+                                    : "#f87171"
                             }
                             strokeWidth="4"
                             fill="transparent"
@@ -439,13 +549,13 @@ export default function RecordView() {
             ))}
           </AnimatePresence>
 
-            {/* empty state (unchanged meaning) */}
-            {filteredSorted.length === 0 && (
-              <div className="rounded-2xl border border-black/5 bg-white p-10 text-center shadow-sm">
-                <p className="mt-2 font-semibold text-[#2B2D42]">No students found</p>
-                <p className="text-sm text-gray-600">Try a different search or filters.</p>
-              </div>
-            )}
+          {/* empty state (unchanged meaning) */}
+          {filteredSorted.length === 0 && (
+            <div className="rounded-2xl border border-black/5 bg-white p-10 text-center shadow-sm">
+              <p className="mt-2 font-semibold text-[#2B2D42]">No students found</p>
+              <p className="text-sm text-gray-600">Try a different search or filters.</p>
+            </div>
+          )}
         </div>
 
         {/* ----------------------- Loading Overlay ----------------------- */}
