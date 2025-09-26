@@ -11,6 +11,8 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { Quiz as QuizSchema } from "@/schemas/quiz";
+import ConfirmSubmitModal from "./ConfirmSubmitModal";
+import SlideUp from "@/app/_components/SlideUp";
 
 /* ================= Theme & helpers ================= */
 
@@ -96,6 +98,8 @@ export default function TakeQuizPage() {
   const [submitted, setSubmitted] = useState(false);
   const [showFocusOverlay, setShowFocusOverlay] = useState(false);
   const [focusViolations, setFocusViolations] = useState(0);
+  const [showConfirm, setShowConfirm] = useState(false);
+
 
   // single-page nav (ALWAYS mixed-style)
   const [idx, setIdx] = useState(0);
@@ -301,10 +305,25 @@ export default function TakeQuizPage() {
     return Math.round((answered / Math.max(1, totalQ)) * 100);
   }, [answers, totalQ]);
 
+  const unansweredCount = totalQ - Object.values(answers).filter(
+    (v) => v !== undefined && v !== ""
+  ).length;
+
+  const handleSubmitClick = () => {
+    // Always show confirmation if unanswered > 0
+    if (unansweredCount > 0) {
+      setShowConfirm(true);
+    } else {
+      // safe to submit directly
+      submitNow();
+    }
+  };
+
   const submitNow = () => {
-    // If not all answered, still allow submit (optional: show confirm)
+    setShowConfirm(false);
     setSubmitted(true);
   };
+
 
   /* ---------- after submit: mark attempt done & show results ---------- */
   const [showResults, setShowResults] = useState(false);
@@ -333,191 +352,198 @@ export default function TakeQuizPage() {
   /* ================= Render ================= */
 
   return (
-    <div
-      className="min-h-screen bg-[#F7FAFF]"
-      onCopy={(e) => e.preventDefault()}
-      onCut={(e) => e.preventDefault()}
-    >
-      <GradientHeader
-        classid={classid}
-        title={quiz.title || "Quiz"}
-        totalQ={totalQ}
-        secondsLeft={secondsLeft}
-        submitted={submitted}
-        onSubmit={submitNow}
-      />
-
-      {/* Instructions bar (under header) */}
-      <div className="bg-amber-50 border-b border-amber-200 px-4 py-3 text-sm text-amber-800">
-        <p className="font-semibold">⚠️ Quiz Rules</p>
-        <ul className="list-disc pl-5 mt-1 space-y-1">
-          <li>Switching tabs will show only <b>one</b> warning.</li>
-          <li>After the first warning, leaving the tab again will <b>auto-submit</b> your quiz.</li>
-          <li>Copy & paste are disabled during the quiz.</li>
-        </ul>
-      </div>
-
-      {/* thin progress */}
-      <div className="h-1 w-full bg-[#e5e7eb]">
-        <div
-          className="h-1 transition-all"
-          style={{ width: `${progressPct}%`, background: progressHex(progressPct) }}
+    // <SlideUp>
+      <div
+        className="min-h-screen bg-[#F7FAFF]"
+        onCopy={(e) => e.preventDefault()}
+        onCut={(e) => e.preventDefault()}
+      >
+        <GradientHeader
+          classid={classid}
+          title={quiz.title || "Quiz"}
+          totalQ={totalQ}
+          secondsLeft={secondsLeft}
+          submitted={submitted}
+          onSubmit={handleSubmitClick}
         />
-      </div>
 
-      <main className="max-w-5xl mx-auto px-4 py-6">
-        {/* RESULTS lock modal */}
-        {showResults && (
-          <ResultModal
-            quizTitle={quiz.title}
-            score={score}
-            totalQ={totalQ}
-            durationUsed={Math.max(
-              0,
-              (quiz?.meta?.durationMin ?? 20) * 60 - (secondsLeft ?? 0)
-            )}
-            onClose={() => setShowResults(true)}
+        {/* Instructions bar (under header) */}
+        <div className="bg-amber-50 border-b border-amber-200 px-4 py-3 text-sm text-amber-800">
+          <p className="font-semibold">⚠️ Quiz Rules</p>
+          <ul className="list-disc pl-5 mt-1 space-y-1">
+            <li>Switching tabs will show only <b>one</b> warning.</li>
+            <li>After the first warning, leaving the tab again will <b>auto-submit</b> your quiz.</li>
+            <li>Copy & paste are disabled during the quiz.</li>
+          </ul>
+        </div>
+
+        {/* thin progress */}
+        <div className="h-1 w-full bg-[#e5e7eb]">
+          <div
+            className="h-1 transition-all"
+            style={{ width: `${progressPct}%`, background: progressHex(progressPct) }}
           />
-        )}
+        </div>
 
-        {/* MIXED-STYLE FOR ALL TYPES (one question per page) */}
-        {!submitted && (
-          <section className="grid lg:grid-cols-[1fr,260px] gap-6">
-            <div className="rounded-2xl bg-white border border-black/5 shadow-sm p-5">
-              <div className="text-xs text-gray-500">
-                Question {idx + 1} / {totalQ}
-              </div>
-              <h2 className="mt-1 text-lg font-semibold text-[#2B2D42]">
-                {quiz.questions[idx]?.prompt}
-              </h2>
+        <main className="max-w-5xl mx-auto px-4 py-6">
+          {/* RESULTS lock modal */}
+          {showResults && (
+            <ResultModal
+              quizTitle={quiz.title}
+              score={score}
+              totalQ={totalQ}
+              durationUsed={Math.max(
+                0,
+                (quiz?.meta?.durationMin ?? 20) * 60 - (secondsLeft ?? 0)
+              )}
+              onClose={() => setShowResults(true)}
+            />
+          )}
 
-              <div className="mt-4">
-                {Array.isArray(quiz.questions[idx]?.choices) ? (
-                  <ul
-                    className="grid gap-2"
-                    role="radiogroup"
-                    aria-label={`Question ${idx + 1}`}
-                  >
-                    {quiz.questions[idx].choices.map((c, ci) => {
-                      const active = answers[idx] === ci;
-                      return (
-                        <li key={ci}>
-                          <label
-                            className={`flex items-center gap-3 rounded-xl border px-4 py-3 cursor-pointer transition ${
-                              active
+          {/* MIXED-STYLE FOR ALL TYPES (one question per page) */}
+          {!submitted && (
+            <section className="grid lg:grid-cols-[1fr,260px] gap-6">
+              <div className="rounded-2xl bg-white border border-black/5 shadow-sm p-5">
+                <div className="text-xs text-gray-500">
+                  Question {idx + 1} / {totalQ}
+                </div>
+                <h2 className="mt-1 text-lg font-semibold text-[#2B2D42]">
+                  {quiz.questions[idx]?.prompt}
+                </h2>
+
+                <div className="mt-4">
+                  {Array.isArray(quiz.questions[idx]?.choices) ? (
+                    <ul
+                      className="grid gap-2"
+                      role="radiogroup"
+                      aria-label={`Question ${idx + 1}`}
+                    >
+                      {quiz.questions[idx].choices.map((c, ci) => {
+                        const active = answers[idx] === ci;
+                        return (
+                          <li key={ci}>
+                            <label
+                              className={`flex items-center gap-3 rounded-xl border px-4 py-3 cursor-pointer transition ${active
                                 ? "border-[#2E5EAA] bg-[#F3F8FF]"
                                 : "border-gray-200 bg-white hover:bg-gray-50"
-                            }`}
-                          >
-                            <input
-                              type="radio"
-                              name={`q_mix_${idx}`}
-                              className="accent-[#2E5EAA]"
-                              checked={active}
-                              onChange={() => pick(idx, ci)}
-                              aria-label={c}
-                            />
-                            <span className="text-sm">{c}</span>
-                          </label>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                ) : (
-                  <textarea
-                    value={answers[idx] || ""}
-                    onChange={(e) => pick(idx, e.target.value)}
-                    onPaste={handlePasteBlock}
-                    placeholder="Typing only — pasting disabled"
-                    className="w-full min-h-[140px] rounded-xl border border-gray-300/70 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-[#2E5EAA]/20"
-                  />
-                )}
-              </div>
+                                }`}
+                            >
+                              <input
+                                type="radio"
+                                name={`q_mix_${idx}`}
+                                className="accent-[#2E5EAA]"
+                                checked={active}
+                                onChange={() => pick(idx, ci)}
+                                aria-label={c}
+                              />
+                              <span className="text-sm">{c}</span>
+                            </label>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  ) : (
+                    <textarea
+                      value={answers[idx] || ""}
+                      onChange={(e) => pick(idx, e.target.value)}
+                      onPaste={handlePasteBlock}
+                      placeholder="Type Your Answer Here."
+                      className="w-full min-h-[140px] rounded-xl border border-gray-300/70 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-[#2E5EAA]/20"
+                    />
+                  )}
+                </div>
 
-              <div className="mt-6 flex items-center justify-between">
-                <button
-                  onClick={() => setIdx((i) => Math.max(0, i - 1))}
-                  className="inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-sm bg-white hover:bg-gray-50"
-                  style={{ borderColor: "#e5e7eb", color: "#2B2D42" }}
-                >
-                  <ChevronLeft size={16} /> Prev
-                </button>
-                {idx < totalQ - 1 ? (
+                <div className="mt-6 flex items-center justify-between">
                   <button
-                    onClick={() => setIdx((i) => Math.min(totalQ - 1, i + 1))}
+                    onClick={() => setIdx((i) => Math.max(0, i - 1))}
                     className="inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-sm bg-white hover:bg-gray-50"
                     style={{ borderColor: "#e5e7eb", color: "#2B2D42" }}
                   >
-                    Next <ChevronRight size={16} />
+                    <ChevronLeft size={16} /> Prev
                   </button>
-                ) : (
-                  <button
-                    onClick={submitNow}
-                    className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white bg-[#2E5EAA] hover:bg-[#254c84] transition"
-                  >
-                    Submit
-                  </button>
-                )}
-              </div>
-            </div>
-
-            <aside className="rounded-2xl bg-white border border-black/5 shadow-sm p-4">
-              <p className="text-sm font-semibold text-[#2B2D42]">Navigate</p>
-              <div className="mt-3 grid grid-cols-7 gap-2">
-                {quiz.questions.map((_, i) => {
-                  const answered = answers[i] !== undefined && answers[i] !== "";
-                  const current = i === idx;
-                  const base = "h-8 w-8 rounded-md text-xs font-semibold grid place-items-center";
-                  return (
+                  {idx < totalQ - 1 ? (
                     <button
-                      key={i}
-                      onClick={() => setIdx(i)}
-                      title={`Question ${i + 1}`}
-                      className={`${base} ${
-                        current ? "text-white" : answered ? "text-white/90" : "text-white"
-                      }`}
-                      style={{
-                        background: current
-                          ? THEME.primary
-                          : answered
-                          ? `${THEME.primary}1F`
-                          : "#cbd5e1",
-                      }}
+                      onClick={() => setIdx((i) => Math.min(totalQ - 1, i + 1))}
+                      className="inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-sm bg-white hover:bg-gray-50"
+                      style={{ borderColor: "#e5e7eb", color: "#2B2D42" }}
                     >
-                      {i + 1}
+                      Next <ChevronRight size={16} />
                     </button>
-                  );
-                })}
+                  ) : (
+                    <button
+                      onClick={handleSubmitClick}
+                      className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white bg-[#2E5EAA] hover:bg-[#254c84] transition"
+                    >
+                      Submit
+                    </button>
+                  )}
+                </div>
               </div>
-            </aside>
-          </section>
-        )}
-      </main>
 
-      {/* Focus overlay (1st tab leave) */}
-      {showFocusOverlay && !submitted && (
-        <div className="fixed inset-0 z-[60] grid place-items-center bg-black/50 backdrop-blur-sm">
-          <div className="w-[92%] max-w-md rounded-2xl bg-white border border-black/10 shadow-xl p-5 text-center">
-            <div className="mx-auto h-10 w-10 rounded-full bg-amber-100 text-amber-700 grid place-items-center">
-              <AlertTriangle size={18} />
-            </div>
-            <h3 className="mt-3 text-lg font-semibold text-[#2B2D42]">Please stay on this tab</h3>
-            <p className="mt-1 text-sm text-gray-600">
-              This is your only warning. If you leave the tab again, your quiz will be
-              <b> auto-submitted</b>.
-            </p>
-            <div className="mt-4">
-              <button
-                onClick={() => setShowFocusOverlay(false)}
-                className="inline-flex items-center rounded-xl bg-[#2E5EAA] hover:bg-[#254c84] px-4 py-2 text-sm font-semibold text-white"
-              >
-                Resume Quiz
-              </button>
+              <aside className="rounded-2xl bg-white border border-black/5 shadow-sm p-4">
+                <p className="text-sm font-semibold text-[#2B2D42]">Navigate</p>
+                <div className="mt-3 grid grid-cols-7 gap-2">
+                  {quiz.questions.map((_, i) => {
+                    const answered = answers[i] !== undefined && answers[i] !== "";
+                    const current = i === idx;
+                    const base = "h-8 w-8 rounded-md text-xs font-semibold grid place-items-center";
+                    return (
+                      <button
+                        key={i}
+                        onClick={() => setIdx(i)}
+                        title={`Question ${i + 1}`}
+                        className={`${base} ${current ? "text-white" : answered ? "text-white/90" : "text-white"
+                          }`}
+                        style={{
+                          background: current
+                            ? THEME.primary
+                            : answered
+                              ? `${THEME.primary}1F`
+                              : "#cbd5e1",
+                        }}
+                      >
+                        {i + 1}
+                      </button>
+                    );
+                  })}
+                </div>
+              </aside>
+            </section>
+          )}
+          <ConfirmSubmitModal
+            open={showConfirm}
+            unanswered={unansweredCount}
+            onCancel={() => setShowConfirm(false)}
+            onConfirm={submitNow}
+          />
+
+        </main>
+
+        {/* Focus overlay (1st tab leave) */}
+        {showFocusOverlay && !submitted && (
+          <div className="fixed inset-0 z-[60] grid place-items-center bg-black/50 backdrop-blur-sm">
+            <div className="w-[92%] max-w-md rounded-2xl bg-white border border-black/10 shadow-xl p-5 text-center">
+              <div className="mx-auto h-10 w-10 rounded-full bg-amber-100 text-amber-700 grid place-items-center">
+                <AlertTriangle size={18} />
+              </div>
+              <h3 className="mt-3 text-lg font-semibold text-[#2B2D42]">Please stay on this tab</h3>
+              <p className="mt-1 text-sm text-gray-600">
+                This is your only warning. If you leave the tab again, your quiz will be
+                <b> auto-submitted</b>.
+              </p>
+              <div className="mt-4">
+                <button
+                  onClick={() => setShowFocusOverlay(false)}
+                  className="inline-flex items-center rounded-xl bg-[#2E5EAA] hover:bg-[#254c84] px-4 py-2 text-sm font-semibold text-white"
+                >
+                  Resume Quiz
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+    // </SlideUp>
   );
 }
 

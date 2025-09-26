@@ -1,5 +1,6 @@
 'use client';
 
+import Link from "next/link";
 import { Quiz } from "@/schemas/quiz"; // <-- keep only the Zod schema value (JS-safe)
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
@@ -19,13 +20,14 @@ import {
   Tag,
   X,
   Save,
+  ArrowLeft
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import QuizPreviewCard from "../../_components/QuizPreviewCard";
 import { generateQuizAPI } from "@/app/lib/ai";
 
 /* ---------------- Modal for Title ---------------- */
-function TitleModal({ open, onClose, onConfirm}) {
+function TitleModal({ open, onClose, onConfirm }) {
   const [title, setTitle] = useState("");
 
   if (!open) return null;
@@ -111,11 +113,10 @@ function DurationPicker({ minutes, setMinutes }) {
             key={m}
             type="button"
             onClick={() => setMinutes(m)}
-            className={`px-3 py-1.5 rounded-full text-sm font-medium transition ${
-              minutes === m
-                ? "bg-[#2E5EAA] text-white shadow-sm"
-                : "bg-white text-[#2B2D42] border border-gray-300/70 hover:bg-gray-50"
-            }`}
+            className={`px-3 py-1.5 rounded-full text-sm font-medium transition ${minutes === m
+              ? "bg-[#2E5EAA] text-white shadow-sm"
+              : "bg-white text-[#2B2D42] border border-gray-300/70 hover:bg-gray-50"
+              }`}
           >
             <span className="inline-flex items-center gap-1">
               <Clock size={14} /> {m}
@@ -197,19 +198,19 @@ function normalizeToQuiz(raw, { quizType, durationMin, classId }) {
     questions.length > 0
       ? questions
       : [
-          quizType === "mcq"
-            ? {
-                type: "mcq",
-                prompt: "Sample question generated from your material.",
-                choices: ["Yes", "No"],
-                answerIndex: 0,
-              }
-            : {
-                type: "short",
-                prompt: "Write a short answer based on your material.",
-                answer: undefined,
-              },
-        ];
+        quizType === "mcq"
+          ? {
+            type: "mcq",
+            prompt: "Sample question generated from your material.",
+            choices: ["Yes", "No"],
+            answerIndex: 0,
+          }
+          : {
+            type: "short",
+            prompt: "Write a short answer based on your material.",
+            answer: undefined,
+          },
+      ];
 
   return {
     id: "preview",
@@ -230,7 +231,7 @@ function showZodError(err) {
       const where = Array.isArray(first?.path) ? first.path.join(".") : "field";
       return `${where}: ${first?.message || "Invalid input"}`;
     }
-  } catch {}
+  } catch { }
   return "Validation failed.";
 }
 
@@ -259,7 +260,7 @@ export default function QuizView() {
   useEffect(() => {
     return () => {
       files.forEach((f) => {
-        try { URL.revokeObjectURL(f.url); } catch {}
+        try { URL.revokeObjectURL(f.url); } catch { }
       });
     };
   }, [files]);
@@ -269,8 +270,8 @@ export default function QuizView() {
     const token =
       globalThis.crypto?.getRandomValues
         ? Array.from(globalThis.crypto.getRandomValues(new Uint8Array(12)))
-            .map((b) => b.toString(16).padStart(2, "0"))
-            .join("")
+          .map((b) => b.toString(16).padStart(2, "0"))
+          .join("")
         : Math.random().toString(16).slice(2) + Math.random().toString(16).slice(2);
     return { id, token };
   }
@@ -300,7 +301,7 @@ export default function QuizView() {
   const removePreview = (idx) => {
     setFiles((prev) => {
       const copy = [...prev];
-      try { URL.revokeObjectURL(copy[idx]?.url); } catch {}
+      try { URL.revokeObjectURL(copy[idx]?.url); } catch { }
       copy.splice(idx, 1);
       return copy;
     });
@@ -397,9 +398,9 @@ export default function QuizView() {
     setMaterial("");
     setFiles((prev) => {
       prev.forEach((p) => {
-        try { URL.revokeObjectURL(p.url); } catch {}
+        try { URL.revokeObjectURL(p.url); } catch { }
       });
-    return [];
+      return [];
     });
     setQuiz(null);
     setSavedQuizId(null);
@@ -463,24 +464,43 @@ export default function QuizView() {
   return (
     <>
       <SlideUp>
-        <div className="space-y-8">
+        <div className="space-y-8 py-9">
           {/* Header */}
           <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#2E5EAA] via-[#81B29A] to-[#2E5EAA] p-6">
             <div className="pointer-events-none absolute -top-10 -left-10 w-48 h-48 rounded-full bg-white/15 blur-2xl" />
             <div className="pointer-events-none absolute -bottom-12 -right-16 w-56 h-56 rounded-full bg-white/10 blur-3xl" />
+
             <div className="relative z-10 text-white">
               <div className="flex items-center gap-3">
+                {/* back arrow sits in the same row */}
+                <Link
+                  href={`/classes/${classId}/quiz`}
+                  aria-label="Back to quizzes"
+                  className="inline-flex h-10 w-10 items-center justify-center
+                   rounded-full bg-white/10 text-white ring-1 ring-white/30
+                   hover:bg-white/20 hover:ring-white/60 transition
+                   focus:outline-none focus:ring-2 focus:ring-white/70"
+                >
+                  <ArrowLeft size={18} />
+                </Link>
+
                 <div className="h-10 w-10 rounded-xl bg-white/20 grid place-items-center">
                   <Wand2 size={20} />
                 </div>
-                <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight">AI Quiz Generator</h2>
+
+                <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight">
+                  AI Quiz Generator
+                </h2>
               </div>
+
               <p className="mt-2 text-white/90">
                 Paste material or drop reference images. Choose quiz style and hit{" "}
                 <span className="font-semibold">Generate</span>.
               </p>
             </div>
           </div>
+
+
 
           {/* Inputs */}
           <div className="grid lg:grid-cols-3 gap-6">
@@ -704,8 +724,8 @@ export default function QuizView() {
               </div>
             )}
           </div>
-        </div>
-      </SlideUp>
+        </div >
+      </SlideUp >
 
       <TitleModal
         open={titleOpen}
@@ -722,11 +742,10 @@ function TypePill({ label, active, onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-xl px-3 py-2 text-sm font-semibold transition ${
-        active
-          ? "bg-[#2E5EAA] text-white shadow-sm"
-          : "bg-white text-[#2B2D42] border border-gray-300/70 hover:bg-gray-50"
-      }`}
+      className={`rounded-xl px-3 py-2 text-sm font-semibold transition ${active
+        ? "bg-[#2E5EAA] text-white shadow-sm"
+        : "bg-white text-[#2B2D42] border border-gray-300/70 hover:bg-gray-50"
+        }`}
     >
       {label}
     </button>

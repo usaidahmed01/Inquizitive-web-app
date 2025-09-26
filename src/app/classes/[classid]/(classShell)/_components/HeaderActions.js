@@ -14,7 +14,7 @@
  */
 
 import { useCallback, useState } from "react";
-import { Link2, Trash2 } from "lucide-react";
+import { LinkIcon, Trash2 } from "lucide-react";
 import toast from "react-hot-toast";
 import ConfirmModal from "./ConfirmModal";
 
@@ -64,7 +64,7 @@ export default function HeaderActions({ classid, className = "", onDelete }) {
               aria-label="Copy class invite link"
               title="Class link"
             >
-              <Link2 size={18} aria-hidden="true" />
+              <LinkIcon size={18} aria-hidden="true" />
             </button>
             {/* Simple tooltip (pure CSS hover) */}
             <div
