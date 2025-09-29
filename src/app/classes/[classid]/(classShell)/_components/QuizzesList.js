@@ -255,22 +255,242 @@ function makeShareId() {
 
 
 /* ---------------- Quiz Card ---------------- */
+
+// function QuizTiltCard({ q, classid, index, delay = 0, onCopyLink, onDelete }) {
+//   const router = useRouter();
+
+//   const displayTitle = q.title && q.title.trim() ? q.title : `Quiz ${index + 1}`;
+//   const cover = buildCover(CARD_GRADIENTS[index % CARD_GRADIENTS.length]);
+//   const quizType = getQuizType(q);
+//   const count = Number.isFinite(q?.count) ? q.count : q?.totalQuestions ?? "—";
+
+//   const goToDetails = () => router.push(`/classes/${classid}/quiz/${q.id}`);
+//   const stop = (e) => { e.preventDefault(); e.stopPropagation(); };
+
+//   return (
+//     <div
+//       role="button"
+//       tabIndex={0}
+//       onClick={goToDetails}
+//       onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && goToDetails()}
+//       className="rounded-[18px] shadow-sm transition-shadow hover:shadow-xl outline-none focus-visible:ring-2 focus-visible:ring-[#3AAFA9]"
+//       aria-label={`Open ${displayTitle}`}
+//     >
+//       <motion.div
+//         initial={{ opacity: 0, y: 16, scale: 0.99 }}
+//         animate={{ opacity: 1, y: 0, scale: 1 }}
+//         whileHover={{ y: -6, scale: 1.02 }}
+//         transition={{ duration: 0.35, ease: "easeOut", delay }}
+//       >
+//         <TiltedCard
+//           imageSrc={cover}
+//           altText={`${displayTitle} cover`}
+//           containerHeight="260px"
+//           containerWidth="100%"
+//           imageHeight="260px"
+//           imageWidth="100%"
+//           rotateAmplitude={10}
+//           scaleOnHover={1.04}
+//           showMobileWarning={false}
+//           showTooltip={false}
+//           displayOverlayContent={true}
+//           overlayContent={
+//             <div className="relative h-full w-full overflow-hidden rounded-[15px]">
+//               {/* actions – ensure they can receive clicks */}
+//               <div className="absolute right-3 top-3 z-10 flex items-center gap-2">
+//                 {Date.now() - new Date(q?.createdAt || 0).getTime() < 24 * 60 * 60 * 1000 && (
+//                   <button
+//                     type="button"
+//                     onClick={(e) => { stop(e); onCopyLink?.(q); }}
+//                     className="pointer-events-auto h-9 w-9 grid place-items-center rounded-full bg-white/20 hover:bg-white/30 text-white backdrop-blur-sm transition"
+//                     title="Copy quiz link"
+//                     aria-label="Copy quiz link"
+//                   >
+//                     <LinkIcon size={18} />
+//                   </button>
+//                 )}
+//                 <button
+//                   type="button"
+//                   onClick={(e) => { stop(e); onDelete?.(); }}
+//                   className="pointer-events-auto h-9 w-9 grid place-items-center rounded-full bg-red-500/50 hover:bg-red-500 text-white backdrop-blur-sm transition"
+//                   title="Delete quiz"
+//                   aria-label="Delete quiz"
+//                 >
+//                   <Trash2 size={18} />
+//                 </button>
+//               </div>
+
+//               {/* gradient veil + card body */}
+//               <div className="absolute inset-0 bg-gradient-to-t from-black/15 via-black/5 to-transparent" />
+//               <div className="absolute bottom-0 left-0 right-0 p-5">
+//                 <div className="rounded-xl bg-white p-4">
+//                   <div className="flex items-center gap-2">
+//                     <h3 className="truncate font-semibold text-[#1F2937]">{displayTitle}</h3>
+//                     <QuizTypeBadge type={quizType} />
+//                   </div>
+//                   <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-gray-700">
+//                     <span className="inline-flex items-center gap-1">
+//                       <svg width="14" height="14" viewBox="0 0 24 24" className="-mt-px" aria-hidden="true">
+//                         <path fill="currentColor" d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z" />
+//                       </svg>
+//                       {count} {count === 1 ? "question" : "questions"}
+//                     </span>
+//                     {q.durationMin ? (
+//                       <span className="inline-flex items-center gap-1">
+//                         <svg width="14" height="14" viewBox="0 0 24 24" className="-mt-px" aria-hidden="true">
+//                           <path fill="currentColor" d="M12 20a8 8 0 1 0 0-16a8 8 0 0 0 0 16m.5-12v4.25l3 1.75l-.75 1.23L11 12V8z" />
+//                         </svg>
+//                         {q.durationMin} min
+//                       </span>
+//                     ) : null}
+//                     {q.createdAt && (
+//                       <span className="inline-flex items-center gap-1">
+//                         <svg width="14" height="14" viewBox="0 0 24 24" className="-mt-px" aria-hidden="true">
+//                           <path fill="currentColor" d="M12 20a8 8 0 1 0 0-16a8 8 0 0 0 0 16" />
+//                         </svg>
+//                         {new Date(q.createdAt).toLocaleString()}
+//                       </span>
+//                     )}
+//                   </div>
+//                 </div>
+//               </div>
+//             </div>
+//           }
+//         />
+//       </motion.div>
+//     </div>
+//   );
+// }
+
+
 function QuizTiltCard({ q, classid, index, delay = 0, onCopyLink, onDelete }) {
   const router = useRouter();
+  const [isTouch, setIsTouch] = useState(false);
+
+  useEffect(() => {
+    // Detect touch / coarse pointers (covers iOS & most Android)
+    const mq = window.matchMedia("(pointer:coarse)");
+    const update = () => setIsTouch(mq.matches || "ontouchstart" in window);
+    update();
+    mq.addEventListener?.("change", update);
+    return () => mq.removeEventListener?.("change", update);
+  }, []);
 
   const displayTitle = q.title && q.title.trim() ? q.title : `Quiz ${index + 1}`;
   const cover = buildCover(CARD_GRADIENTS[index % CARD_GRADIENTS.length]);
   const quizType = getQuizType(q);
   const count = Number.isFinite(q?.count) ? q.count : q?.totalQuestions ?? "—";
-
   const goToDetails = () => router.push(`/classes/${classid}/quiz/${q.id}`);
-  const stop = (e) => { e.preventDefault(); e.stopPropagation(); };
+
+  const stopAll = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  /* ---------------- Mobile (no tilt) ---------------- */
+  if (isTouch) {
+    return (
+      <div
+        className="rounded-[18px] shadow-sm hover:shadow-xl transition-shadow overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-[#3AAFA9]"
+        role="button"
+        tabIndex={0}
+        onClick={goToDetails}
+        onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && goToDetails()}
+        aria-label={`Open ${displayTitle}`}
+      >
+        <div className="relative h-[260px] w-full">
+          {/* static cover */}
+          <img
+            src={cover}
+            alt={`${displayTitle} cover`}
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+
+          {/* actions (tap works because parent click is not on these) */}
+          <div className="absolute right-3 top-3 z-10 flex items-center gap-2">
+            {Date.now() - new Date(q?.createdAt || 0).getTime() < 24 * 60 * 60 * 1000 && (
+              <button
+                type="button"
+                onClick={(e) => { stopAll(e); onCopyLink && onCopyLink(q); }}
+                onTouchStart={stopAll}
+                className="h-9 w-9 grid place-items-center rounded-full bg-white/20 hover:bg-white/30 text-white backdrop-blur-sm transition"
+                title="Copy quiz link"
+                aria-label="Copy quiz link"
+              >
+                <LinkIcon size={18} />
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={(e) => { stopAll(e); onDelete && onDelete(); }}
+              onTouchStart={stopAll}
+              className="h-9 w-9 grid place-items-center rounded-full bg-red-500/50 hover:bg-red-500 text-white backdrop-blur-sm transition"
+              title="Delete quiz"
+              aria-label="Delete quiz"
+            >
+              <Trash2 size={18} />
+            </button>
+          </div>
+
+          {/* gradient veil + body */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/15 via-black/5 to-transparent" />
+          <div className="absolute bottom-0 left-0 right-0 p-5">
+            <div className="rounded-xl bg-white p-4">
+              <div className="flex items-center gap-2">
+                <h3 className="truncate font-semibold text-[#1F2937]">{displayTitle}</h3>
+                <QuizTypeBadge type={quizType} />
+              </div>
+              <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-gray-700">
+                <span className="inline-flex items-center gap-1">
+                  <svg width="14" height="14" viewBox="0 0 24 24" className="-mt-px" aria-hidden="true">
+                    <path fill="currentColor" d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z" />
+                  </svg>
+                  {count} {count === 1 ? "question" : "questions"}
+                </span>
+                {q.durationMin ? (
+                  <span className="inline-flex items-center gap-1">
+                    <svg width="14" height="14" viewBox="0 0 24 24" className="-mt-px" aria-hidden="true">
+                      <path fill="currentColor" d="M12 20a8 8 0 1 0 0-16a8 8 0 0 0 0 16m.5-12v4.25l3 1.75l-.75 1.23L11 12V8z" />
+                    </svg>
+                    {q.durationMin} min
+                  </span>
+                ) : null}
+                {q.createdAt && (
+                  <span className="inline-flex items-center gap-1">
+                    <svg width="14" height="14" viewBox="0 0 24 24" className="-mt-px" aria-hidden="true">
+                      <path fill="currentColor" d="M12 20a8 8 0 1 0 0-16a8 8 0 0 0 0 16" />
+                    </svg>
+                    {new Date(q.createdAt).toLocaleString()}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /* ---------------- Desktop (with tilt) ---------------- */
+  const handleCardClick = (e) => {
+    if (e.defaultPrevented) return;
+    const target = e.target;
+    if (
+      target.closest('[data-action]') ||
+      target.closest('button') ||
+      target.closest('a') ||
+      target.getAttribute('role') === 'button'
+    ) {
+      return; // ignore action clicks
+    }
+    goToDetails();
+  };
 
   return (
     <div
       role="button"
       tabIndex={0}
-      onClick={goToDetails}
+      onClick={handleCardClick}
       onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && goToDetails()}
       className="rounded-[18px] shadow-sm transition-shadow hover:shadow-xl outline-none focus-visible:ring-2 focus-visible:ring-[#3AAFA9]"
       aria-label={`Open ${displayTitle}`}
@@ -295,13 +515,13 @@ function QuizTiltCard({ q, classid, index, delay = 0, onCopyLink, onDelete }) {
           displayOverlayContent={true}
           overlayContent={
             <div className="relative h-full w-full overflow-hidden rounded-[15px]">
-              {/* actions – ensure they can receive clicks */}
-              <div className="absolute right-3 top-3 z-10 flex items-center gap-2">
+              {/* actions */}
+              <div className="absolute right-3 top-3 z-10 flex items-center gap-2" data-action>
                 {Date.now() - new Date(q?.createdAt || 0).getTime() < 24 * 60 * 60 * 1000 && (
                   <button
                     type="button"
-                    onClick={(e) => { stop(e); onCopyLink?.(q); }}
-                    className="pointer-events-auto h-9 w-9 grid place-items-center rounded-full bg-white/20 hover:bg-white/30 text-white backdrop-blur-sm transition"
+                    onClick={(e) => { stopAll(e); onCopyLink && onCopyLink(q); }}
+                    className="h-9 w-9 grid place-items-center rounded-full bg-white/20 hover:bg-white/30 text-white backdrop-blur-sm transition"
                     title="Copy quiz link"
                     aria-label="Copy quiz link"
                   >
@@ -310,16 +530,17 @@ function QuizTiltCard({ q, classid, index, delay = 0, onCopyLink, onDelete }) {
                 )}
                 <button
                   type="button"
-                  onClick={(e) => { stop(e); onDelete?.(); }}
-                  className="pointer-events-auto h-9 w-9 grid place-items-center rounded-full bg-red-500/50 hover:bg-red-500 text-white backdrop-blur-sm transition"
+                  onClick={(e) => { stopAll(e); onDelete && onDelete(); }}
+                  className="h-9 w-9 grid place-items-center rounded-full bg-red-500/50 hover:bg-red-500 text-white backdrop-blur-sm transition"
                   title="Delete quiz"
                   aria-label="Delete quiz"
+                  data-action
                 >
                   <Trash2 size={18} />
                 </button>
               </div>
 
-              {/* gradient veil + card body */}
+              {/* gradient veil + body */}
               <div className="absolute inset-0 bg-gradient-to-t from-black/15 via-black/5 to-transparent" />
               <div className="absolute bottom-0 left-0 right-0 p-5">
                 <div className="rounded-xl bg-white p-4">
@@ -360,6 +581,8 @@ function QuizTiltCard({ q, classid, index, delay = 0, onCopyLink, onDelete }) {
     </div>
   );
 }
+
+
 
 /* ---------------- Empty State ---------------- */
 function EmptyState({ classid }) {

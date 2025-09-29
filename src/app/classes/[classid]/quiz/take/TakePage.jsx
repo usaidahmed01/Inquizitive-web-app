@@ -576,7 +576,7 @@ function ResultModal({ quizTitle, score, totalQ, durationUsed }) {
           <div className="rounded-xl border border-black/5 bg-white p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Auto-graded MCQs</p>
+                <p className="text-sm text-gray-600">Auto-graded</p>
                 <p className="text-2xl font-extrabold text-[#2B2D42]">
                   {score ? `${score.correct} / ${score.total}` : "—"}
                 </p>

@@ -160,6 +160,54 @@ function DurationPicker({ minutes, setMinutes }) {
   );
 }
 
+function MarksPicker({ quizType, marks, setMarks }) {
+  const inputBase =
+    "w-20 h-9 rounded-xl border border-gray-300/70 px-3 text-sm outline-none focus:ring-2 focus:ring-[#2E5EAA]/30";
+
+  return (
+    <div>
+      <label className="block text-xs text-gray-500 mb-2">Marks</label>
+
+      {quizType === "mixed" ? (
+        <div className="grid grid-cols-2 gap-3">
+          <div className="rounded-xl border border-gray-200 bg-white p-3">
+            <p className="text-xs text-gray-500 mb-1">Per MCQ</p>
+            <input
+              type="number"
+              min={0}
+              className={inputBase}
+              value={marks.perMcq}
+              onChange={(e) => setMarks((m) => ({ ...m, perMcq: e.target.value }))}
+            />
+          </div>
+          <div className="rounded-xl border border-gray-200 bg-white p-3">
+            <p className="text-xs text-gray-500 mb-1">Per Short</p>
+            <input
+              type="number"
+              min={0}
+              className={inputBase}
+              value={marks.perShort}
+              onChange={(e) => setMarks((m) => ({ ...m, perShort: e.target.value }))}
+            />
+          </div>
+        </div>
+      ) : (
+        <div className="rounded-xl border border-gray-200 bg-white p-3 inline-flex items-center gap-3">
+          <p className="text-xs text-gray-500">Marks per question</p>
+          <input
+            type="number"
+            min={0}
+            className={inputBase}
+            value={marks.perQuestion}
+            onChange={(e) => setMarks((m) => ({ ...m, perQuestion: e.target.value }))}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+
 /* --- Normalizer: keep your shape consistent before Zod parse --- */
 function normalizeToQuiz(raw, { quizType, durationMin, classId }) {
   const rawQs = Array.isArray(raw?.questions) ? raw.questions : [];
@@ -255,6 +303,9 @@ export default function QuizView() {
 
   const [savedQuizId, setSavedQuizId] = useState(null);
   const inputRef = useRef(null);
+
+  const [marks, setMarks] = useState({ perQuestion: 1, perMcq: 1, perShort: 1 });
+  const [editPrompt, setEditPrompt] = useState("");
 
   // revoke preview URLs on unmount
   useEffect(() => {
@@ -352,6 +403,34 @@ export default function QuizView() {
     }
   };
 
+  /* ---------------- re-generate ---------------- */
+  const regenerateWithEdits = async () => {
+    if (!classId || !quiz) return;
+    setGenerating(true);
+
+    try {
+      const data = await generateQuizAPI(String(classId), {
+        material,
+        quizType,
+        difficulty,
+        count,
+        editPrompt: editPrompt.trim(), // <-- hook this up in your API layer later
+      });
+
+      const normalized = normalizeToQuiz(data, { quizType, durationMin, classId });
+      const valid = Quiz.parse(normalized);
+      setQuiz(valid);
+      setSavedQuizId(null); // new preview, not saved yet
+      toast.success("Applied edits. Review the new preview.");
+    } catch (e) {
+      console.error(e);
+      toast.error("Failed to apply edits.");
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+
   /* ---------------- quick preview scroll ---------------- */
   const previewNow = () => {
     if (!quiz) return toast("Generate a quiz first", { icon: "⚠️" });
@@ -426,7 +505,8 @@ export default function QuizView() {
         classId: String(classId),
         title: finalTitle || "Untitled Quiz",
         createdAt: new Date().toISOString(),
-        meta: { ...(quiz.meta || {}), durationMin },
+        // meta: { ...(quiz.meta || {}), durationMin },
+        meta: { ...(quiz.meta || {}), durationMin, marks: effectiveMarks },
         questions: quiz.questions,
       };
 
@@ -460,6 +540,32 @@ export default function QuizView() {
       setSaving(false);
     }
   };
+
+
+  // Effective marks object saved 
+  const effectiveMarks = useMemo(() => {
+    if (quizType === "mixed") {
+      return { perMcq: Math.max(0, Number(marks.perMcq) || 0), perShort: Math.max(0, Number(marks.perShort) || 0) };
+    }
+    return { perQuestion: Math.max(0, Number(marks.perQuestion) || 0) };
+  }, [quizType, marks]);
+
+  // Count questions by type + total marks for preview
+  const { mcqCount, shortCount, totalMarks } = useMemo(() => {
+    let mcq = 0, short = 0;
+    (quiz?.questions || []).forEach(q => {
+      if (Array.isArray(q?.choices)) mcq += 1; else short += 1;
+    });
+
+    let t = 0;
+    if (quizType === "mixed") {
+      t = mcq * (Number(marks.perMcq) || 0) + short * (Number(marks.perShort) || 0);
+    } else {
+      const p = Number(marks.perQuestion) || 0;
+      t = (mcq + short) * p;
+    }
+    return { mcqCount: mcq, shortCount: short, totalMarks: t };
+  }, [quiz, quizType, marks]);
 
   return (
     <>
@@ -635,6 +741,15 @@ export default function QuizView() {
                     <div className="col-span-2">
                       <DurationPicker minutes={durationMin} setMinutes={setDurationMin} />
                     </div>
+                    <div className="col-span-2">
+                      <MarksPicker quizType={quizType} marks={marks} setMarks={setMarks} />
+                      {quiz && (
+                        <p className="mt-2 text-[11px] text-gray-500">
+                          MCQ: {mcqCount} • Short: {shortCount} •{" "}
+                          <span className="font-semibold">Total Marks: {totalMarks}</span>
+                        </p>
+                      )}
+                    </div>
                   </div>
 
                   {/* Actions */}
@@ -701,6 +816,9 @@ export default function QuizView() {
                   <div className="flex items-center gap-2 text-[#2B2D42]">
                     <CheckCircle2 className="text-[#81B29A]" size={18} />
                     <span className="font-semibold">Preview</span>
+                    <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-grey">
+                      Total: {totalMarks}
+                    </span>
                   </div>
                   <button
                     onClick={saveAndView}
@@ -724,6 +842,43 @@ export default function QuizView() {
               </div>
             )}
           </div>
+
+          {/* Edit & Regenerate (AI) — appears after quiz is generated */}
+
+          {quiz && (
+            <div className="rounded-2xl bg-white border border-black/5 shadow-sm p-5">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold text-[#2B2D42]">Edit & Regenerate (AI)</p>
+                <span className="text-xs text-gray-500">
+                  Total Marks: <b>{totalMarks}</b>
+                </span>
+              </div>
+
+              <p className="mt-1 text-xs text-gray-500">
+                Describe changes (e.g., “replace Q3 with harder one”, “add 2 more MCQs about photosynthesis”, “increase difficulty”).
+              </p>
+
+              <textarea
+                value={editPrompt}
+                onChange={(e) => setEditPrompt(e.target.value)}
+                placeholder="Type instructions for the AI to modify this quiz…"
+                className="mt-3 w-full min-h-[110px] rounded-xl border border-gray-300/70 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-[#2E5EAA]/30"
+              />
+
+              <div className="mt-3 flex items-center gap-2">
+                <button
+                  disabled={generating || !editPrompt.trim()}
+                  onClick={regenerateWithEdits}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 font-semibold text-white
+          bg-[#2E5EAA] hover:bg-[#264d8b] disabled:opacity-60 disabled:cursor-not-allowed transition"
+                >
+                  {generating ? <Loader2 size={16} className="animate-spin" /> : <Wand2 size={16} />}
+                  {generating ? "Applying edits…" : "Apply edits (AI)"}
+                </button>
+                <span className="text-xs text-gray-500">This will regenerate a new <b>Quiz</b>.</span>
+              </div>
+            </div>
+          )}
         </div >
       </SlideUp >
 
