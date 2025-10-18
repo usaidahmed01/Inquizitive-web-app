@@ -26,6 +26,8 @@ import { toast } from "react-hot-toast";
 import QuizPreviewCard from "../../_components/QuizPreviewCard";
 import { generateQuizAPI } from "@/app/lib/ai";
 
+const API = process.env.NEXT_PUBLIC_API_BASE;
+
 /* ---------------- Modal for Title ---------------- */
 function TitleModal({ open, onClose, onConfirm }) {
   const [title, setTitle] = useState("");
@@ -316,16 +318,16 @@ export default function QuizView() {
     };
   }, [files]);
 
-  function makeShareId() {
-    const id = (globalThis.crypto?.randomUUID?.() ?? `pid_${Date.now()}`).replace(/-/g, "");
-    const token =
-      globalThis.crypto?.getRandomValues
-        ? Array.from(globalThis.crypto.getRandomValues(new Uint8Array(12)))
-          .map((b) => b.toString(16).padStart(2, "0"))
-          .join("")
-        : Math.random().toString(16).slice(2) + Math.random().toString(16).slice(2);
-    return { id, token };
-  }
+  // function makeShareId() {
+  //   const id = (globalThis.crypto?.randomUUID?.() ?? `pid_${Date.now()}`).replace(/-/g, "");
+  //   const token =
+  //     globalThis.crypto?.getRandomValues
+  //       ? Array.from(globalThis.crypto.getRandomValues(new Uint8Array(12)))
+  //         .map((b) => b.toString(16).padStart(2, "0"))
+  //         .join("")
+  //       : Math.random().toString(16).slice(2) + Math.random().toString(16).slice(2);
+  //   return { id, token };
+  // }
 
   /* ---------------- files ---------------- */
   const handleFile = (fileList) => {
@@ -438,39 +440,58 @@ export default function QuizView() {
   };
 
   /* ---------------- copy link (requires saved quiz first) ---------------- */
-  const copyPreviewLink = async () => {
-    if (!quiz) return toast("Generate a quiz first", { icon: "⚠️" });
-    if (!classId) return toast.error("Missing class id");
-    if (!savedQuizId) return toast.error("Please save the quiz first before sharing the link.");
+  // const copyPreviewLink = async () => {
+  //   if (!quiz) return toast("Generate a quiz first", { icon: "⚠️" });
+  //   if (!classId) return toast.error("Missing class id");
+  //   if (!savedQuizId) return toast.error("Please save the quiz first before sharing the link.");
 
-    const { id: pid2, token: t } = makeShareId();
-    try {
-      localStorage.setItem(
-        `inquiz_preview_${pid2}`,
-        JSON.stringify({
-          classId: String(classId),
-          token: t,
-          quiz,
-          createdAt: Date.now(),
-        })
-      );
-    } catch (e) {
-      console.error(e);
-      toast.error("Could not prepare share link");
-      return;
-    }
+  //   const { id: pid2, token: t } = makeShareId();
+  //   try {
+  //     localStorage.setItem(
+  //       `inquiz_preview_${pid2}`,
+  //       JSON.stringify({
+  //         classId: String(classId),
+  //         token: t,
+  //         quiz,
+  //         createdAt: Date.now(),
+  //       })
+  //     );
+  //   } catch (e) {
+  //     console.error(e);
+  //     toast.error("Could not prepare share link");
+  //     return;
+  //   }
 
-    const url = `${location.origin}/classes/${encodeURIComponent(
-      String(classId)
-    )}/quiz/verify?pid=${encodeURIComponent(pid2)}&t=${encodeURIComponent(t)}`;
+  //   const url = `${location.origin}/classes/${encodeURIComponent(
+  //     String(classId)
+  //   )}/quiz/verify?pid=${encodeURIComponent(pid2)}&t=${encodeURIComponent(t)}`;
 
-    try {
-      await navigator.clipboard.writeText(url);
-      toast.success(`Verification link copied for “${quiz.title || "Untitled Quiz"}”.`);
-    } catch {
-      window.prompt("Copy this link:", url);
-    }
-  };
+  //   try {
+  //     await navigator.clipboard.writeText(url);
+  //     toast.success(`Verification link copied for “${quiz.title || "Untitled Quiz"}”.`);
+  //   } catch {
+  //     window.prompt("Copy this link:", url);
+  //   }
+  // };
+
+
+const copyPreviewLink = async () => {
+  if (!quiz) return toast("Generate a quiz first", { icon: "⚠️" });
+  if (!classId) return toast.error("Missing class id");
+  if (!savedQuizId) return toast.error("Please save the quiz first before sharing the link.");
+
+  const url = `${location.origin}/classes/${encodeURIComponent(
+    String(classId)
+  )}/quiz/verify?quiz=${encodeURIComponent(String(savedQuizId))}`;
+
+  try {
+    await navigator.clipboard.writeText(url);
+    toast.success(`Verification link copied for “${quiz.title || "Untitled Quiz"}”.`);
+  } catch {
+    window.prompt("Copy this link:", url);
+  }
+};
+
 
   /* ---------------- clear all ---------------- */
   const clearAll = () => {
@@ -494,52 +515,109 @@ export default function QuizView() {
     setTitleOpen(true);
   };
 
+  // const doSave = async (finalTitle) => {
+  //   setTitleOpen(false);
+  //   setSaving(true);
+  //   const quizId = `q_${Date.now()}`;
+
+  //   try {
+  //     const toSave = {
+  //       id: quizId,
+  //       classId: String(classId),
+  //       title: finalTitle || "Untitled Quiz",
+  //       createdAt: new Date().toISOString(),
+  //       // meta: { ...(quiz.meta || {}), durationMin },
+  //       meta: { ...(quiz.meta || {}), durationMin, marks: effectiveMarks },
+  //       questions: quiz.questions,
+  //     };
+
+  //     const valid = Quiz.parse(toSave); // Zod guard
+  //     localStorage.setItem(`inquiz_quiz_${quizId}`, JSON.stringify(valid));
+
+  //     const idxKey = `inquiz_idx_${classId}`;
+  //     const idx = JSON.parse(localStorage.getItem(idxKey) || "[]");
+  //     localStorage.setItem(
+  //       idxKey,
+  //       JSON.stringify([
+  //         {
+  //           id: quizId,
+  //           title: valid.title,
+  //           createdAt: valid.createdAt,
+  //           count: (quiz?.questions || []).length,
+  //           durationMin: valid.meta?.durationMin ?? null,
+  //           type: valid.meta?.type ?? quizType,
+  //         },
+  //         ...idx,
+  //       ])
+  //     );
+
+  //     setSavedQuizId(quizId);
+  //     setQuiz((q) => (q ? { ...q, title: valid.title } : q));
+  //     toast.success("Quiz saved successfully!");
+  //   } catch (e) {
+  //     console.error("Failed to save quiz:", e);
+  //     toast.error(showZodError(e) || "Save failed");
+  //   } finally {
+  //     setSaving(false);
+  //   }
+  // };
+
+
   const doSave = async (finalTitle) => {
-    setTitleOpen(false);
-    setSaving(true);
-    const quizId = `q_${Date.now()}`;
+  setTitleOpen(false);
+  setSaving(true);
 
-    try {
-      const toSave = {
-        id: quizId,
-        classId: String(classId),
-        title: finalTitle || "Untitled Quiz",
-        createdAt: new Date().toISOString(),
-        // meta: { ...(quiz.meta || {}), durationMin },
-        meta: { ...(quiz.meta || {}), durationMin, marks: effectiveMarks },
-        questions: quiz.questions,
-      };
+  try {
+    // build payload the backend expects
+    const payload = {
+      class_id: Number(classId),
+      title: finalTitle || quiz.title || "Untitled Quiz",
+      type: (quiz?.meta?.type || quizType || "mixed").toLowerCase(),
+      duration_min: Number(durationMin),          // will be ignored if column missing (server fallback)
+      questions: (quiz?.questions || []).map((q) => {
+        if (Array.isArray(q?.choices)) {
+          return {
+            type: "mcq",
+            prompt: q.prompt,
+            choices: q.choices,
+            answerIndex: Number.isInteger(q.answerIndex) ? q.answerIndex : 0,
+          };
+        }
+        return {
+          type: "short",
+          prompt: q.prompt,
+          answer: q.answer ?? null,
+        };
+        // server's _normalize_question will sanitize further
+      }),
+    };
 
-      const valid = Quiz.parse(toSave); // Zod guard
-      localStorage.setItem(`inquiz_quiz_${quizId}`, JSON.stringify(valid));
+    const res = await fetch(`${API}/quizzes`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
 
-      const idxKey = `inquiz_idx_${classId}`;
-      const idx = JSON.parse(localStorage.getItem(idxKey) || "[]");
-      localStorage.setItem(
-        idxKey,
-        JSON.stringify([
-          {
-            id: quizId,
-            title: valid.title,
-            createdAt: valid.createdAt,
-            count: (quiz?.questions || []).length,
-            durationMin: valid.meta?.durationMin ?? null,
-            type: valid.meta?.type ?? quizType,
-          },
-          ...idx,
-        ])
-      );
-
-      setSavedQuizId(quizId);
-      setQuiz((q) => (q ? { ...q, title: valid.title } : q));
-      toast.success("Quiz saved successfully!");
-    } catch (e) {
-      console.error("Failed to save quiz:", e);
-      toast.error(showZodError(e) || "Save failed");
-    } finally {
-      setSaving(false);
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      throw new Error(j?.detail || "Save failed");
     }
-  };
+
+    const j = await res.json();
+    const newId = j.quiz_id;
+
+    setSavedQuizId(newId);
+    toast.success("Quiz saved to class!");
+
+    // OPTIONAL: update preview title with finalTitle so it matches list cards
+    setQuiz((q) => (q ? { ...q, title: finalTitle || q.title } : q));
+  } catch (e) {
+    console.error(e);
+    toast.error(String(e?.message || "Save failed"));
+  } finally {
+    setSaving(false);
+  }
+};
 
 
   // Effective marks object saved 

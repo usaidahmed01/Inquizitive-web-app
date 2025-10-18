@@ -27,5 +27,5 @@ export const JoinClassSchema = z.object({
 export const VerifySchema = z.object({
   seat: z.string().toUpperCase().regex(reSeat, "Seat No must be B followed by 11 digits (e.g., B23110006177)."),
   email: z.string().trim().regex(reEmail, "Enter a valid email"),
-  pass: z.string().regex(rePass6, "Password must be at least 6 characters"),
+  // pass: z.string().regex(rePass6, "Password must be at least 6 characters"),
 });

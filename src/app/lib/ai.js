@@ -1,54 +1,41 @@
-// Simple API wrapper for your FastAPI backend.
-// Set NEXT_PUBLIC_API_BASE in .env (e.g. http://localhost:8000)
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "";
+// src/app/lib/ai.js (JS)
+import { getSessionToken } from "./auth";
 
-/**
- * Call your FastAPI generator
- * @param {string} classId
- * @param {{
- *  material: string,
- *  quizType: 'mcq'|'short'|'mixed',
- *  difficulty: number,
- *  count: number,
- *  images?: string[] // (optional) data URLs or URLs, if you send them
- * }} payload
- * @returns {Promise<{title:string, meta:{type:string,difficulty:number,count:number}, questions:Array}>}
- */
-export async function generateQuizAPI(classId, payload) {
-  // If you don’t have the backend yet, keep the mock:
-  if (!API_BASE) {
-    // -------- MOCK (kept for local dev) --------
-    const base = payload.material.split(/\s+/).filter(Boolean).slice(0, 20).join(" ");
-    const questions = Array.from({ length: Math.max(1, Number(payload.count) || 10) })
-      .map((_, i) => {
-        const qText = `Q${i + 1}. ${base || "From uploaded material"} — concept ${i + 1}?`;
-        if (payload.quizType === "short") {
-          return { id: i + 1, type: "short", q: qText, a: "Short answer goes here." };
-        }
-        if (payload.quizType === "mcq") {
-          return { id: i + 1, type: "mcq", q: qText, options: ["Option A","Option B","Option C","Option D"], answerIndex: i % 4 };
-        }
-        // mixed
-        return i % 2 === 0
-          ? { id: i + 1, type: "mcq", q: qText, options: ["Option A","Option B","Option C","Option D"], answerIndex: (i+1)%4 }
-          : { id: i + 1, type: "short", q: qText, a: "Short answer goes here." };
-      });
+const API_BASE =
+  process.env.NEXT_PUBLIC_API_BASE ||
+  process.env.NEXT_PUBLIC_API_BASE_URL ||
+  "";
 
-    return {
-      title: "Generated Quiz (Preview)",
-      meta: { type: payload.quizType, difficulty: payload.difficulty, count: questions.length },
-      questions,
-    };
-  }
-
-  // -------- REAL CALL (FastAPI) --------
-  const res = await fetch(`${API_BASE}/classes/${classId}/quiz/generate`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
+async function req(path, { method = "GET", body } = {}) {
+  const token = await getSessionToken();
+  const res = await fetch(`${API_BASE}${path}`, {
+    method,
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: body ? JSON.stringify(body) : undefined,
+    cache: "no-store",
+    credentials: "include",
   });
-  if (!res.ok) throw new Error(`Generate failed: ${res.status}`);
-  const data = await res.json();
-  // Expect your FastAPI to return: { title, meta:{type,difficulty,count}, questions:[ ... ] }
-  return data;
+  if (!res.ok) {
+    const txt = await res.text().catch(() => "");
+    throw new Error(txt || `HTTP ${res.status}`);
+  }
+  return res.json().catch(() => ({}));
 }
+
+export async function generateQuizAPI(classId, payload) {
+  return req(`/classes/${encodeURIComponent(classId)}/quiz/generate`, {
+    method: "POST",
+    body: payload,
+  });
+}
+
+export const QuizAPI = {
+  listByClass: (classId) => req(`/quizzes?class_id=${encodeURIComponent(classId)}`),
+  create: (payload) => req(`/quizzes`, { method: "POST", body: payload }),
+  getFull: (quizId) => req(`/quizzes/${encodeURIComponent(quizId)}/full`),
+  delete: (quizId) => req(`/quizzes/${encodeURIComponent(quizId)}`, { method: "DELETE" }),
+  submitResult: (payload) => req(`/results`, { method: "POST", body: payload }),
+};

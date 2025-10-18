@@ -1,16 +1,8 @@
 "use client";
 
-/**
- * QuizzesList — with Link + Delete actions per card (mock storage)
- * - Reads/writes index: inquiz_idx_${classid}
- * - Copies quiz link
- * - Confirms + deletes (mock) with toast
- */
-
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { useEffect, useState, useCallback } from "react";
-import { useParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { Plus, LinkIcon, Trash2 } from "lucide-react";
 import toast from "react-hot-toast";
@@ -18,7 +10,9 @@ import toast from "react-hot-toast";
 import TiltedCard from "./TiltedCard";
 import ConfirmModal from "./ConfirmModal";
 
-/* ---------------- Badge + Type Helpers ---------------- */
+const API = process.env.NEXT_PUBLIC_API_BASE;
+
+/* ---------------- Type helpers (unchanged) ---------------- */
 function getQuizType(q) {
   const raw =
     (q?.type ?? q?.quizType ?? q?.meta?.type ?? q?.details?.type ?? "")
@@ -49,7 +43,7 @@ function QuizTypeBadge({ type, className = "" }) {
   );
 }
 
-/* ---------------- Skeleton + Covers ---------------- */
+/* ---------------- Visual bits (unchanged) ---------------- */
 function QuizSkeletonCard() {
   return (
     <div className="relative h-[260px] overflow-hidden rounded-[18px] border border-gray-200 bg-white/40 shadow-sm backdrop-blur-md" aria-hidden="true">
@@ -71,9 +65,7 @@ function GlassShimmer() {
     <div className="absolute inset-0 overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-white/10 backdrop-blur-sm" />
       <div className="animate-[glassmove_2s_infinite] absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent" />
-      <style jsx>{`
-        @keyframes glassmove { 100% { transform: translateX(100%); } }
-      `}</style>
+      <style jsx>{`@keyframes glassmove { 100% { transform: translateX(100%); } }`}</style>
     </div>
   );
 }
@@ -83,8 +75,7 @@ const CARD_GRADIENTS = [
   ["#06beb6", "#48b1bf", "#1e3c72"],
   ["#5ABF90", "#81C784", "#A8E6CF"],
 ];
-function buildCover(gradient) {
-  const [c1, c2, c3] = gradient;
+function buildCover([c1, c2, c3]) {
   return (
     "data:image/svg+xml;utf8," +
     encodeURIComponent(`
@@ -109,82 +100,74 @@ function buildCover(gradient) {
 /* ---------------- Main ---------------- */
 export default function QuizzesList() {
   const { classid } = useParams();
-  const [quizzes, setQuizzes] = useState([]);
+  const [quizzes, setQuizzes] = useState([]);      // [{ id, title, type, durationMin, createdAt, count? }]
   const [loading, setLoading] = useState(true);
 
   // confirm-delete state
   const [pendingDelete, setPendingDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
-  const idxKey = `inquiz_idx_${classid}`;
-
+  // 1) Load quizzes for this class
   useEffect(() => {
-    try {
+    let alive = true;
+    (async () => {
       setLoading(true);
-      const arr = JSON.parse(localStorage.getItem(idxKey) || "[]");
-      setQuizzes(Array.isArray(arr) ? arr : []);
-    } catch {
-      setQuizzes([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [idxKey]);
+      try {
+        const r = await fetch(`${API}/quizzes?class_id=${encodeURIComponent(String(classid))}`);
+        const j = await r.json();
+        const rows = Array.isArray(j?.rows) ? j.rows : [];
+        if (!alive) return;
+        // normalize for the card UI (note: count from server)
+        const base = rows.map((q) => ({
+          id: q.quiz_id,
+          title: q.title || "Untitled Quiz",
+          type: q.type || "mixed",
+          durationMin: q.duration_min ?? null,
+          createdAt: q.created_at || null,
+          count: Number.isFinite(q.question_count) ? q.question_count : undefined,
+        }));
 
-  // copy quiz share link
-  const handleCopyLink = useCallback((quiz) => {
-    try {
-      // load full quiz doc from localStorage
-      const raw = localStorage.getItem(`inquiz_quiz_${quiz.id}`);
-      if (!raw) {
-        toast.error("Quiz data not found. Open & save the quiz first.");
-        return;
+        setQuizzes(base);
+      } catch {
+        if (alive) setQuizzes([]);
+      } finally {
+        if (alive) setLoading(false);
       }
-      const quizDoc = JSON.parse(raw);
-
-      // build preview payload
-      const { id: pid, token: t } = makeShareId();
-      localStorage.setItem(
-        `inquiz_preview_${pid}`,
-        JSON.stringify({
-          classId: String(classid),
-          token: t,
-          quiz: quizDoc,
-          createdAt: Date.now(),
-        })
-      );
-
-      // shareable URL
-      const url = `${location.origin}/classes/${encodeURIComponent(
-        String(classid)
-      )}/quiz/verify?pid=${encodeURIComponent(pid)}&t=${encodeURIComponent(t)}`;
-
-      navigator.clipboard
-        .writeText(url)
-        .then(() => toast.success(`Link copied for “${quizDoc.title}”`))
-        .catch(() => {
-          window.prompt("Copy this link:", url);
-        });
-    } catch (e) {
-      console.error(e);
-      toast.error("Could not create share link");
-    }
+    })();
+    return () => { alive = false; };
   }, [classid]);
 
 
-  // confirm -> delete (mock)
-  const confirmDelete = useCallback(() => {
+  // Copy a link for this quiz
+  const handleCopyLink = useCallback((quiz) => {
+    // const url = `${location.origin}/classes/${encodeURIComponent(String(classid))}/quiz/${encodeURIComponent(String(quiz.id))}`;
+    // If you want the student start/verify URL instead, switch to:
+    const url = `${location.origin}/classes/${classid}/quiz/verify?quiz=${quiz.id}`;
+    navigator.clipboard.writeText(url)
+      .then(() => toast.success(`Link copied for “${quiz.title}”`))
+      .catch(() => { window.prompt("Copy this link:", url); });
+  }, [classid]);
+
+  // Delete via API
+  const confirmDelete = useCallback(async () => {
     if (!pendingDelete) return;
+    setDeleting(true);
     try {
-      const arr = JSON.parse(localStorage.getItem(idxKey) || "[]");
-      const next = (Array.isArray(arr) ? arr : []).filter(q => q.id !== pendingDelete.id);
-      localStorage.setItem(idxKey, JSON.stringify(next));
-      setQuizzes(next);
+      const res = await fetch(`${API}/quizzes/${pendingDelete.id}`, { method: "DELETE" });
+      if (!res.ok) {
+        let msg = "Failed to delete quiz";
+        try { const j = await res.json(); msg = j?.detail || j?.message || msg; } catch { }
+        throw new Error(msg);
+      }
+      setQuizzes((prev) => prev.filter(q => q.id !== pendingDelete.id));
       toast.success("Quiz deleted");
-    } catch {
-      toast.error("Could not delete (mock)");
-    } finally {
       setPendingDelete(null);
+    } catch (e) {
+      toast.error(String(e?.message || "Could not delete quiz"));
+    } finally {
+      setDeleting(false);
     }
-  }, [idxKey, pendingDelete]);
+  }, [API, pendingDelete]);
 
   return (
     <div className="space-y-6 py-8">
@@ -209,9 +192,7 @@ export default function QuizzesList() {
 
       {/* list */}
       {loading ? (
-        <div className="grid gap-6 sm:grid-cols-2">
-          {Array.from({ length: 2 }).map((_, i) => <QuizSkeletonCard key={i} />)}
-        </div>
+        <QuizSkeletonCard />
       ) : quizzes.length === 0 ? (
         <EmptyState classid={classid} />
       ) : (
@@ -222,7 +203,7 @@ export default function QuizzesList() {
               q={q}
               index={i}
               classid={classid}
-              onCopyLink={(quiz) => handleCopyLink(quiz)}
+              onCopyLink={handleCopyLink}
               onDelete={() => setPendingDelete(q)}
             />
           ))}
@@ -232,143 +213,24 @@ export default function QuizzesList() {
       {/* confirm delete */}
       <ConfirmModal
         open={!!pendingDelete}
-        onClose={() => setPendingDelete(null)}
+        onClose={() => !deleting && setPendingDelete(null)}
         onConfirm={confirmDelete}
         title="Delete this quiz?"
-        message="This will permanently remove the quiz from this class. You can’t undo this."
-        confirmText="Delete"
+        message="This will permanently remove the quiz and its questions/options/results."
+        confirmText={deleting ? "Deleting…" : "Delete"}
         cancelText="Cancel"
+        loading={deleting}
       />
     </div>
   );
 }
 
-function makeShareId() {
-  const id = (globalThis.crypto?.randomUUID?.() ?? `pid_${Date.now()}`).replace(/-/g, "");
-  const token = globalThis.crypto?.getRandomValues
-    ? Array.from(globalThis.crypto.getRandomValues(new Uint8Array(12)))
-      .map((b) => b.toString(16).padStart(2, "0"))
-      .join("")
-    : Math.random().toString(16).slice(2) + Math.random().toString(16).slice(2);
-  return { id, token };
-}
-
-
-/* ---------------- Quiz Card ---------------- */
-
-// function QuizTiltCard({ q, classid, index, delay = 0, onCopyLink, onDelete }) {
-//   const router = useRouter();
-
-//   const displayTitle = q.title && q.title.trim() ? q.title : `Quiz ${index + 1}`;
-//   const cover = buildCover(CARD_GRADIENTS[index % CARD_GRADIENTS.length]);
-//   const quizType = getQuizType(q);
-//   const count = Number.isFinite(q?.count) ? q.count : q?.totalQuestions ?? "—";
-
-//   const goToDetails = () => router.push(`/classes/${classid}/quiz/${q.id}`);
-//   const stop = (e) => { e.preventDefault(); e.stopPropagation(); };
-
-//   return (
-//     <div
-//       role="button"
-//       tabIndex={0}
-//       onClick={goToDetails}
-//       onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && goToDetails()}
-//       className="rounded-[18px] shadow-sm transition-shadow hover:shadow-xl outline-none focus-visible:ring-2 focus-visible:ring-[#3AAFA9]"
-//       aria-label={`Open ${displayTitle}`}
-//     >
-//       <motion.div
-//         initial={{ opacity: 0, y: 16, scale: 0.99 }}
-//         animate={{ opacity: 1, y: 0, scale: 1 }}
-//         whileHover={{ y: -6, scale: 1.02 }}
-//         transition={{ duration: 0.35, ease: "easeOut", delay }}
-//       >
-//         <TiltedCard
-//           imageSrc={cover}
-//           altText={`${displayTitle} cover`}
-//           containerHeight="260px"
-//           containerWidth="100%"
-//           imageHeight="260px"
-//           imageWidth="100%"
-//           rotateAmplitude={10}
-//           scaleOnHover={1.04}
-//           showMobileWarning={false}
-//           showTooltip={false}
-//           displayOverlayContent={true}
-//           overlayContent={
-//             <div className="relative h-full w-full overflow-hidden rounded-[15px]">
-//               {/* actions – ensure they can receive clicks */}
-//               <div className="absolute right-3 top-3 z-10 flex items-center gap-2">
-//                 {Date.now() - new Date(q?.createdAt || 0).getTime() < 24 * 60 * 60 * 1000 && (
-//                   <button
-//                     type="button"
-//                     onClick={(e) => { stop(e); onCopyLink?.(q); }}
-//                     className="pointer-events-auto h-9 w-9 grid place-items-center rounded-full bg-white/20 hover:bg-white/30 text-white backdrop-blur-sm transition"
-//                     title="Copy quiz link"
-//                     aria-label="Copy quiz link"
-//                   >
-//                     <LinkIcon size={18} />
-//                   </button>
-//                 )}
-//                 <button
-//                   type="button"
-//                   onClick={(e) => { stop(e); onDelete?.(); }}
-//                   className="pointer-events-auto h-9 w-9 grid place-items-center rounded-full bg-red-500/50 hover:bg-red-500 text-white backdrop-blur-sm transition"
-//                   title="Delete quiz"
-//                   aria-label="Delete quiz"
-//                 >
-//                   <Trash2 size={18} />
-//                 </button>
-//               </div>
-
-//               {/* gradient veil + card body */}
-//               <div className="absolute inset-0 bg-gradient-to-t from-black/15 via-black/5 to-transparent" />
-//               <div className="absolute bottom-0 left-0 right-0 p-5">
-//                 <div className="rounded-xl bg-white p-4">
-//                   <div className="flex items-center gap-2">
-//                     <h3 className="truncate font-semibold text-[#1F2937]">{displayTitle}</h3>
-//                     <QuizTypeBadge type={quizType} />
-//                   </div>
-//                   <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-gray-700">
-//                     <span className="inline-flex items-center gap-1">
-//                       <svg width="14" height="14" viewBox="0 0 24 24" className="-mt-px" aria-hidden="true">
-//                         <path fill="currentColor" d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z" />
-//                       </svg>
-//                       {count} {count === 1 ? "question" : "questions"}
-//                     </span>
-//                     {q.durationMin ? (
-//                       <span className="inline-flex items-center gap-1">
-//                         <svg width="14" height="14" viewBox="0 0 24 24" className="-mt-px" aria-hidden="true">
-//                           <path fill="currentColor" d="M12 20a8 8 0 1 0 0-16a8 8 0 0 0 0 16m.5-12v4.25l3 1.75l-.75 1.23L11 12V8z" />
-//                         </svg>
-//                         {q.durationMin} min
-//                       </span>
-//                     ) : null}
-//                     {q.createdAt && (
-//                       <span className="inline-flex items-center gap-1">
-//                         <svg width="14" height="14" viewBox="0 0 24 24" className="-mt-px" aria-hidden="true">
-//                           <path fill="currentColor" d="M12 20a8 8 0 1 0 0-16a8 8 0 0 0 0 16" />
-//                         </svg>
-//                         {new Date(q.createdAt).toLocaleString()}
-//                       </span>
-//                     )}
-//                   </div>
-//                 </div>
-//               </div>
-//             </div>
-//           }
-//         />
-//       </motion.div>
-//     </div>
-//   );
-// }
-
-
+/* ---------------- Card (your current version kept) ---------------- */
 function QuizTiltCard({ q, classid, index, delay = 0, onCopyLink, onDelete }) {
   const router = useRouter();
   const [isTouch, setIsTouch] = useState(false);
 
   useEffect(() => {
-    // Detect touch / coarse pointers (covers iOS & most Android)
     const mq = window.matchMedia("(pointer:coarse)");
     const update = () => setIsTouch(mq.matches || "ontouchstart" in window);
     update();
@@ -379,60 +241,36 @@ function QuizTiltCard({ q, classid, index, delay = 0, onCopyLink, onDelete }) {
   const displayTitle = q.title && q.title.trim() ? q.title : `Quiz ${index + 1}`;
   const cover = buildCover(CARD_GRADIENTS[index % CARD_GRADIENTS.length]);
   const quizType = getQuizType(q);
-  const count = Number.isFinite(q?.count) ? q.count : q?.totalQuestions ?? "—";
+  const count = Number.isFinite(q?.count) ? q.count : "—";
   const goToDetails = () => router.push(`/classes/${classid}/quiz/${q.id}`);
 
-  const stopAll = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-  };
+  const stopAll = (e) => { e.preventDefault(); e.stopPropagation(); };
 
-  /* ---------------- Mobile (no tilt) ---------------- */
   if (isTouch) {
     return (
       <div
         className="rounded-[18px] shadow-sm hover:shadow-xl transition-shadow overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-[#3AAFA9]"
-        role="button"
-        tabIndex={0}
+        role="button" tabIndex={0}
         onClick={goToDetails}
         onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && goToDetails()}
         aria-label={`Open ${displayTitle}`}
       >
         <div className="relative h-[260px] w-full">
-          {/* static cover */}
-          <img
-            src={cover}
-            alt={`${displayTitle} cover`}
-            className="absolute inset-0 h-full w-full object-cover"
-          />
-
-          {/* actions (tap works because parent click is not on these) */}
+          <img src={cover} alt={`${displayTitle} cover`} className="absolute inset-0 h-full w-full object-cover" />
           <div className="absolute right-3 top-3 z-10 flex items-center gap-2">
-            {Date.now() - new Date(q?.createdAt || 0).getTime() < 24 * 60 * 60 * 1000 && (
-              <button
-                type="button"
-                onClick={(e) => { stopAll(e); onCopyLink && onCopyLink(q); }}
-                onTouchStart={stopAll}
-                className="h-9 w-9 grid place-items-center rounded-full bg-white/20 hover:bg-white/30 text-white backdrop-blur-sm transition"
-                title="Copy quiz link"
-                aria-label="Copy quiz link"
-              >
-                <LinkIcon size={18} />
-              </button>
-            )}
             <button
-              type="button"
-              onClick={(e) => { stopAll(e); onDelete && onDelete(); }}
+              type="button" onClick={(e) => { stopAll(e); onCopyLink?.(q); }}
+              onTouchStart={stopAll}
+              className="h-9 w-9 grid place-items-center rounded-full bg-white/20 hover:bg-white/30 text-white backdrop-blur-sm transition"
+              title="Copy quiz link" aria-label="Copy quiz link"
+            ><LinkIcon size={18} /></button>
+            <button
+              type="button" onClick={(e) => { stopAll(e); onDelete?.(); }}
               onTouchStart={stopAll}
               className="h-9 w-9 grid place-items-center rounded-full bg-red-500/50 hover:bg-red-500 text-white backdrop-blur-sm transition"
-              title="Delete quiz"
-              aria-label="Delete quiz"
-            >
-              <Trash2 size={18} />
-            </button>
+              title="Delete quiz" aria-label="Delete quiz"
+            ><Trash2 size={18} /></button>
           </div>
-
-          {/* gradient veil + body */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/15 via-black/5 to-transparent" />
           <div className="absolute bottom-0 left-0 right-0 p-5">
             <div className="rounded-xl bg-white p-4">
@@ -471,76 +309,47 @@ function QuizTiltCard({ q, classid, index, delay = 0, onCopyLink, onDelete }) {
     );
   }
 
-  /* ---------------- Desktop (with tilt) ---------------- */
   const handleCardClick = (e) => {
     if (e.defaultPrevented) return;
-    const target = e.target;
-    if (
-      target.closest('[data-action]') ||
-      target.closest('button') ||
-      target.closest('a') ||
-      target.getAttribute('role') === 'button'
-    ) {
-      return; // ignore action clicks
-    }
+    const t = e.target;
+    if (t.closest('[data-action]') || t.closest('button') || t.closest('a') || t.getAttribute('role') === 'button') return;
     goToDetails();
   };
 
   return (
     <div
-      role="button"
-      tabIndex={0}
+      role="button" tabIndex={0}
       onClick={handleCardClick}
       onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && goToDetails()}
       className="rounded-[18px] shadow-sm transition-shadow hover:shadow-xl outline-none focus-visible:ring-2 focus-visible:ring-[#3AAFA9]"
       aria-label={`Open ${displayTitle}`}
     >
-      <motion.div
-        initial={{ opacity: 0, y: 16, scale: 0.99 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        whileHover={{ y: -6, scale: 1.02 }}
-        transition={{ duration: 0.35, ease: "easeOut", delay }}
-      >
+      <motion.div initial={{ opacity: 0, y: 16, scale: 0.99 }} animate={{ opacity: 1, y: 0, scale: 1 }} whileHover={{ y: -6, scale: 1.02 }} transition={{ duration: 0.35, ease: "easeOut", delay }}>
         <TiltedCard
           imageSrc={cover}
           altText={`${displayTitle} cover`}
-          containerHeight="260px"
-          containerWidth="100%"
-          imageHeight="260px"
-          imageWidth="100%"
-          rotateAmplitude={10}
-          scaleOnHover={1.04}
-          showMobileWarning={false}
-          showTooltip={false}
-          displayOverlayContent={true}
+          containerHeight="260px" containerWidth="100%"
+          imageHeight="260px" imageWidth="100%"
+          rotateAmplitude={10} scaleOnHover={1.04}
+          showMobileWarning={false} showTooltip={false} displayOverlayContent
           overlayContent={
-            <div className="relative h-full w-full overflow-hidden rounded-[15px]">
-              {/* actions */}
-              <div className="absolute right-3 top-3 z-10 flex items-center gap-2" data-action>
+            <div className="relative h-full w-full overflow-hidden rounded-[15px] pointer-events-none">
+              <div className="absolute right-3 top-3 z-20 flex items-center gap-2 pointer-events-auto" data-action>
                 {Date.now() - new Date(q?.createdAt || 0).getTime() < 24 * 60 * 60 * 1000 && (
                   <button
                     type="button"
-                    onClick={(e) => { stopAll(e); onCopyLink && onCopyLink(q); }}
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); onCopyLink?.(q); }}
                     className="h-9 w-9 grid place-items-center rounded-full bg-white/20 hover:bg-white/30 text-white backdrop-blur-sm transition"
-                    title="Copy quiz link"
-                    aria-label="Copy quiz link"
-                  >
-                    <LinkIcon size={18} />
-                  </button>
-                )}
+                    title="Copy quiz link" aria-label="Copy quiz link" data-action
+                  ><LinkIcon size={18} /></button>)}
                 <button
                   type="button"
-                  onClick={(e) => { stopAll(e); onDelete && onDelete(); }}
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDelete?.(); }}
                   className="h-9 w-9 grid place-items-center rounded-full bg-red-500/50 hover:bg-red-500 text-white backdrop-blur-sm transition"
-                  title="Delete quiz"
-                  aria-label="Delete quiz"
-                  data-action
-                >
-                  <Trash2 size={18} />
-                </button>
+                  title="Delete quiz" aria-label="Delete quiz" data-action
+                ><Trash2 size={18} /></button>
               </div>
 
-              {/* gradient veil + body */}
               <div className="absolute inset-0 bg-gradient-to-t from-black/15 via-black/5 to-transparent" />
               <div className="absolute bottom-0 left-0 right-0 p-5">
                 <div className="rounded-xl bg-white p-4">
@@ -582,9 +391,7 @@ function QuizTiltCard({ q, classid, index, delay = 0, onCopyLink, onDelete }) {
   );
 }
 
-
-
-/* ---------------- Empty State ---------------- */
+/* ---------------- Empty state (unchanged) ---------------- */
 function EmptyState({ classid }) {
   return (
     <div className="relative overflow-hidden rounded-2xl border border-black/5 bg-white p-10 shadow-sm">
