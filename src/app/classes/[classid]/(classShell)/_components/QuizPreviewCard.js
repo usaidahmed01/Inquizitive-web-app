@@ -37,7 +37,6 @@ export default function QuizPreviewCard({ quiz }) {
   // meta fallbacks (don’t infer anything new)
   const count = quiz.meta?.count ?? quiz.questions?.length ?? 0;
   const type = quiz.meta?.type ?? "mixed";
-  const difficulty = quiz.meta?.difficulty ?? 0;
 
   return (
     <motion.div
@@ -57,7 +56,7 @@ export default function QuizPreviewCard({ quiz }) {
               {quiz.title || "Generated Quiz (Preview)"}
             </h3>
             <p className="mt-0.5 text-[13px] text-white/90">
-              {count} Question{count > 1 ? "s" : ""} • Difficulty {difficulty}%
+              {count} Question{count > 1 ? "s" : ""}
             </p>
           </div>
 
