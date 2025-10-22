@@ -82,7 +82,6 @@ export default function DashboardPage() {
       if (!alive) return;
 
       if (error) {
-        console.log(error);
         toast.error('Failed to load classes');
         setClasses([]);
       } else {

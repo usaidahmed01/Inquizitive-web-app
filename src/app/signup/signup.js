@@ -1,11 +1,9 @@
 "use client";
 
 /**
- * Teacher Signup (JS)
- * - Creates Supabase user with email+password
- * - Waits for a session token (handles race)
- * - Upserts profiles.role = "teacher" via /profiles/ensure_teacher
- * - Redirects to /dashboard if successful
+ * Teacher Signup (JS) — role-less edition
+ * - Create user → ensure profile → redirect.
+ * - Keeps your original "role === 'teacher'" guard by mapping it in getRole().
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -17,7 +15,7 @@ import { User, Mail, Lock, Eye, EyeOff } from "lucide-react";
 
 import VenomBeams from "../_components/VenomBeams";
 import { SignupSchema } from "@/schemas";
-import { supabase } from "../lib/supabaseClient";             // ← use @ alias
+import { supabase } from "../lib/supabaseClient";
 import { ensureTeacherOnce, getRole, getSessionToken } from "../lib/auth";
 import "./signup.css";
 
@@ -25,37 +23,28 @@ export default function Signup() {
   const router = useRouter();
   const cardRef = useRef(null);
 
-  // Form state
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
-  // UI state
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isShaking, setIsShaking] = useState(false);
   const [err, setErr] = useState("");
 
-  // FX toggles
   const [fxEnabled, setFxEnabled] = useState(true);
   useEffect(() => {
-    const isTouch =
-      typeof window !== "undefined" &&
-      (("ontouchstart" in window) || navigator.maxTouchPoints > 0);
-    const prefersReduced =
-      typeof window !== "undefined" &&
-      window.matchMedia &&
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const isTouch = typeof window !== "undefined" && (("ontouchstart" in window) || navigator.maxTouchPoints > 0);
+    const prefersReduced = typeof window !== "undefined" && window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     setFxEnabled(!(isTouch || prefersReduced));
   }, []);
 
-  // Live Zod checks
   const nameCheck = SignupSchema.shape.fullName.safeParse(fullName);
   const emailCheck = SignupSchema.shape.email.safeParse(email.trim());
   const passCheck = SignupSchema.shape.password.safeParse(password);
   const canSubmit = nameCheck.success && emailCheck.success && passCheck.success && !isSubmitting;
 
-  // Already signed in as teacher? Skip page.
+  // Keep your condition: if role === "teacher" already, go dashboard
   useEffect(() => {
     let active = true;
     (async () => {
@@ -66,7 +55,6 @@ export default function Signup() {
     return () => { active = false; };
   }, [router]);
 
-  // 3D tilt
   const handleTiltMove = (e) => {
     if (!fxEnabled) return;
     const card = cardRef.current;
@@ -87,7 +75,6 @@ export default function Signup() {
     card.style.transform = `rotateX(0deg) rotateY(0deg) translateZ(0)`;
   };
 
-  // ------- WIRED SUBMIT -------
   async function handleSubmit(e) {
     e.preventDefault();
     setErr("");
@@ -105,7 +92,7 @@ export default function Signup() {
 
     setIsSubmitting(true);
     try {
-      // 1) Create user
+      // 1) create user
       const { error } = await supabase.auth.signUp({
         email: parsed.data.email,
         password: parsed.data.password,
@@ -117,21 +104,27 @@ export default function Signup() {
         return;
       }
 
-      // 2) Wait for token (handles race)
+      // 2) wait for token
       const token = await getSessionToken();
       if (!token) {
         setErr("Check your email to confirm the account, then log in.");
         return;
       }
 
-      // 3) Mark as teacher on backend
+      // 3) upsert profile (no role)
       const ok = await ensureTeacherOnce(parsed.data.fullName);
       if (!ok) {
-        setErr("Signup succeeded but role was not set to teacher. Please try logging in again.");
+        setErr("Signup succeeded but could not create your profile. Please try logging in again.");
         return;
       }
 
-      // 4) Go to dashboard
+      // 4) verify -> role mapping ("teacher" if profile exists)
+      const role = await getRole();
+      if (role !== "teacher") {
+        setErr("Profile not ready yet, please try logging in.");
+        return;
+      }
+
       router.replace("/dashboard");
     } catch (e2) {
       setErr(e2?.message || "Signup failed.");
@@ -141,36 +134,15 @@ export default function Signup() {
     }
   }
 
-
   return (
     <div
       className="relative flex min-h-screen items-center justify-center bg-cover bg-center p-4 md:p-6"
-      style={{
-        backgroundImage: "url('/bgg.png')",
-        backgroundRepeat: "no-repeat",
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-      }}
+      style={{ backgroundImage: "url('/bgg.png')", backgroundRepeat: "no-repeat", backgroundSize: "cover", backgroundPosition: "center" }}
     >
-      <VenomBeams
-        className="absolute inset-0 z-0 h-full w-full"
-        colors={["#2E5EAA", "#81B29A", "#4A8FE7"]}
-        density={fxEnabled ? 14 : 8}
-        speed={fxEnabled ? 1.0 : 0.6}
-        opacity={fxEnabled ? 0.7 : 0.5}
-      />
+      <VenomBeams className="absolute inset-0 z-0 h-full w-full" colors={["#2E5EAA", "#81B29A", "#4A8FE7"]} density={fxEnabled ? 14 : 8} speed={fxEnabled ? 1.0 : 0.6} opacity={fxEnabled ? 0.7 : 0.5} />
 
-      <motion.div
-        initial={{ opacity: 0, y: 28 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, ease: "easeOut", delay: 0.05 }}
-        className="flex w-full justify-center"
-      >
-        <motion.div
-          className="tilt-container relative z-10 w-full max-w-md"
-          animate={isShaking ? { x: [0, -10, 10, -8, 8, -4, 4, 0] } : { x: 0 }}
-          transition={{ duration: 0.45, ease: "easeInOut" }}
-        >
+      <motion.div initial={{ opacity: 0, y: 28 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: "easeOut", delay: 0.05 }} className="flex w-full justify-center">
+        <motion.div className="tilt-container relative z-10 w-full max-w-md" animate={isShaking ? { x: [0, -10, 10, -8, 8, -4, 4, 0] } : { x: 0 }} transition={{ duration: 0.45, ease: "easeInOut" }}>
           <div
             ref={cardRef}
             onMouseMove={handleTiltMove}
@@ -187,7 +159,6 @@ export default function Signup() {
             </h1>
 
             <form className="space-y-4 md:space-y-5" onSubmit={handleSubmit} noValidate>
-              {/* FULL NAME */}
               <div className="space-y-1">
                 <div className="relative">
                   <User className="absolute inset-y-0 left-3 my-auto text-gray-400" size={18} />
@@ -196,12 +167,9 @@ export default function Signup() {
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     placeholder="Full Name"
-                    className={`no-tilt h-12 w-full rounded-lg border pl-10 pr-4 outline-none focus:outline-none focus:ring ${fullName.length === 0
-                        ? "border-gray-200 focus:ring-[#2E5EAA]"
-                        : nameCheck.success
-                          ? "border-green-400 focus:ring-green-400"
-                          : "border-red-400 focus:ring-red-400"
-                      }`}
+                    className={`no-tilt h-12 w-full rounded-lg border pl-10 pr-4 outline-none focus:outline-none focus:ring ${
+                      fullName.length === 0 ? "border-gray-200 focus:ring-[#2E5EAA]" : nameCheck.success ? "border-green-400 focus:ring-green-400" : "border-red-400 focus:ring-red-400"
+                    }`}
                     autoComplete="name"
                     aria-invalid={fullName.length > 0 && !nameCheck.success}
                   />
@@ -213,7 +181,6 @@ export default function Signup() {
                 )}
               </div>
 
-              {/* EMAIL */}
               <div className="space-y-1">
                 <div className="relative">
                   <Mail className="pointer-events-none absolute inset-y-0 left-3 my-auto text-gray-400" size={18} />
@@ -222,12 +189,9 @@ export default function Signup() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="@teacher.com"
-                    className={`no-tilt h-12 w-full rounded-lg border pl-10 pr-4 outline-none focus:outline-none focus:ring ${email.length === 0
-                        ? "border-gray-200 focus:ring-[#2E5EAA]"
-                        : emailCheck.success
-                          ? "border-green-400 focus:ring-green-400"
-                          : "border-red-400 focus:ring-red-400"
-                      }`}
+                    className={`no-tilt h-12 w-full rounded-lg border pl-10 pr-4 outline-none focus:outline-none focus:ring ${
+                      email.length === 0 ? "border-gray-200 focus:ring-[#2E5EAA]" : emailCheck.success ? "border-green-400 focus:ring-green-400" : "border-red-400 focus:ring-red-400"
+                    }`}
                     inputMode="email"
                     autoComplete="email"
                     aria-invalid={email.length > 0 && !emailCheck.success}
@@ -240,7 +204,6 @@ export default function Signup() {
                 )}
               </div>
 
-              {/* PASSWORD */}
               <div>
                 <div className="relative">
                   <Lock className="absolute inset-y-0 left-3 my-auto text-gray-400" size={18} />
@@ -249,12 +212,9 @@ export default function Signup() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Password (min 6 chars)"
-                    className={`hide-native-reveal no-tilt h-12 w-full rounded-lg border pl-10 pr-12 outline-none focus:outline-none focus:ring ${password.length === 0
-                        ? "border-gray-200 focus:ring-[#2E5EAA]"
-                        : passCheck.success
-                          ? "border-green-400 focus:ring-green-400"
-                          : "border-red-400 focus:ring-red-400"
-                      }`}
+                    className={`hide-native-reveal no-tilt h-12 w-full rounded-lg border pl-10 pr-12 outline-none focus:outline-none focus:ring ${
+                      password.length === 0 ? "border-gray-200 focus:ring-[#2E5EAA]" : passCheck.success ? "border-green-400 focus:ring-green-400" : "border-red-400 focus:ring-red-400"
+                    }`}
                     autoComplete="new-password"
                   />
                   <button
@@ -268,13 +228,9 @@ export default function Signup() {
                   </button>
                 </div>
 
-                {/* Strength bar */}
                 <div className="mt-2">
                   <div className="h-2 w-full overflow-hidden rounded-full bg-gray-200">
-                    <div
-                      className={`h-full transition-all duration-300 ${getPasswordStrength(password).barClass}`}
-                      style={{ width: `${(getPasswordStrength(password).score / 4) * 100}%` }}
-                    />
+                    <div className={`h-full transition-all duration-300 ${getPasswordStrength(password).barClass}`} style={{ width: `${(getPasswordStrength(password).score / 4) * 100}%` }} />
                   </div>
                   <div className="mt-1 text-xs text-gray-600">
                     {password.length === 0 ? "Enter a password" : getPasswordStrength(password).label}
@@ -288,13 +244,8 @@ export default function Signup() {
                 )}
               </div>
 
-              {/* SUBMIT */}
               <div className="flex flex-col items-center gap-2">
-                <button
-                  type="submit"
-                  disabled={!canSubmit}
-                  className={`signupbtn no-tilt ${!canSubmit ? "cursor-not-allowed opacity-60" : ""}`}
-                >
+                <button type="submit" disabled={!canSubmit} className={`signupbtn no-tilt ${!canSubmit ? "cursor-not-allowed opacity-60" : ""}`}>
                   {isSubmitting ? "Sign Up…" : "Sign Up"}
                 </button>
                 {err ? <p className="text-xs text-red-600">{err}</p> : null}
@@ -303,9 +254,7 @@ export default function Signup() {
 
             <p className="mt-6 text-center text-sm">
               Already have an account?{" "}
-              <Link href="/login" className="no-tilt font-semibold text-primary hover:underline">
-                Login
-              </Link>
+              <Link href="/login" className="no-tilt font-semibold text-primary hover:underline">Login</Link>
             </p>
           </div>
         </motion.div>

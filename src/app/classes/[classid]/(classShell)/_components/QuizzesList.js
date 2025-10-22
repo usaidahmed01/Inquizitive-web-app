@@ -140,8 +140,6 @@ export default function QuizzesList() {
 
   // Copy a link for this quiz
   const handleCopyLink = useCallback((quiz) => {
-    // const url = `${location.origin}/classes/${encodeURIComponent(String(classid))}/quiz/${encodeURIComponent(String(quiz.id))}`;
-    // If you want the student start/verify URL instead, switch to:
     const url = `${location.origin}/classes/${classid}/quiz/verify?quiz=${quiz.id}`;
     navigator.clipboard.writeText(url)
       .then(() => toast.success(`Link copied for “${quiz.title}”`))

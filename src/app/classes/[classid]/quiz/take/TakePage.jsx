@@ -19,6 +19,10 @@ const fmtSeconds = (s) => {
   return `${String(m).padStart(2, "0")}:${String(r).padStart(2, "0")}`;
 };
 
+// ---- marks config ----
+const MCQ_MARKS = 1;
+const SHORT_MARKS = 3;
+
 /* ================= Loading Screen ================= */
 function LoadingScreen() {
   return (
@@ -70,33 +74,83 @@ function LoadingScreen() {
   );
 }
 
+
 /* ================= Header ================= */
 function GradientHeader({ classid, title, totalQ, secondsLeft, submitted, onSubmit }) {
   const urgent = (secondsLeft ?? 0) <= 30;
+
   return (
     <div className="relative overflow-hidden bg-gradient-to-r from-[#5C9BCF] via-[#8CB8E2] to-[#7FAF9D]">
-      <div className="pointer-events-none absolute -top-10 -left-10 w-48 h-48 rounded-full bg-white/15 blur-2xl" />
-      <div className="pointer-events-none absolute -bottom-12 -right-16 w-56 h-56 rounded-full bg-white/10 blur-3xl" />
-      <div className="relative z-10 max-w-5xl mx-auto px-4 py-5">
-        <div className="flex items-center justify-between gap-3">
+      {/* soft blobs */}
+      <div className="pointer-events-none absolute -top-10 -left-10 w-40 h-40 rounded-full bg-white/15 blur-2xl" />
+      <div className="pointer-events-none absolute -bottom-12 -right-16 w-52 h-52 rounded-full bg-white/10 blur-3xl" />
+
+      {/* content */}
+      <div className="relative z-10 mx-auto max-w-5xl px-3 sm:px-4 py-3 sm:py-5">
+        {/* MOBILE (<= sm): 2 rows */}
+        <div className="flex flex-col gap-3 sm:hidden">
+          {/* Row 1: title + timer */}
+          <div className="flex items-center justify-between gap-2">
+            <div className="min-w-0 flex items-center gap-2">
+              <div className="h-9 w-9 rounded-lg bg-white/20 grid place-items-center shrink-0">
+                <ListChecks size={18} className="text-white" />
+              </div>
+              <div className="min-w-0">
+                <h1 className="truncate text-base font-extrabold tracking-tight text-white">
+                  {title || "Quiz"}
+                </h1>
+              </div>
+            </div>
+
+            <div
+              className={`inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-[12px] font-semibold text-white bg-white/20 ${urgent ? "animate-pulse" : ""}`}
+              aria-live="polite"
+              aria-atomic="true"
+            >
+              <Clock size={14} className={urgent ? "text-red-300" : "opacity-90"} />
+              {fmtSeconds(secondsLeft)}
+            </div>
+          </div>
+
+          {/* Row 2: class/meta + submit */}
+          <div className="flex items-center justify-between gap-2">
+            <p className="truncate text-[12px] text-white/90">
+              {`${
+                (typeof classid === "string" ? classid : String(classid))
+              } • ${totalQ} questions`}
+            </p>
+
+            {!submitted && (
+              <button
+                onClick={onSubmit}
+                className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-white bg-[#2E5EAA] hover:bg-[#254c84] transition"
+                aria-label="Submit quiz"
+              >
+                Submit
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* DESKTOP (>= sm): original layout, roomier */}
+        <div className="hidden sm:flex items-center justify-between gap-3">
           <div className="min-w-0 flex items-center gap-3">
             <div className="h-10 w-10 rounded-xl bg-white/20 grid place-items-center">
               <ListChecks size={20} className="text-white" />
             </div>
             <div className="min-w-0">
-              <h1 className="text-xl md:text-2xl font-extrabold text-white tracking-tight truncate">
+              <h1 className="truncate text-xl md:text-2xl font-extrabold text-white tracking-tight">
                 {title || "Quiz"}
               </h1>
               <p className="text-white/85 text-sm">
-                Class {String(classid)} • {totalQ} questions
+                {`${(typeof classid === "string" ? classid : String(classid))} • ${totalQ} questions`}
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-3 shrink-0">
             <div
-              className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 bg-white/20 text-white font-semibold ${urgent ? "animate-pulse" : ""
-                }`}
+              className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 bg-white/20 text-white font-semibold ${urgent ? "animate-pulse" : ""}`}
               aria-live="polite"
               aria-atomic="true"
             >
@@ -107,8 +161,7 @@ function GradientHeader({ classid, title, totalQ, secondsLeft, submitted, onSubm
             {!submitted && (
               <button
                 onClick={onSubmit}
-                className="ml-2 inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white 
-                           bg-[#2E5EAA] hover:bg-[#254c84] transition"
+                className="ml-1 inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white bg-[#2E5EAA] hover:bg-[#254c84] transition"
               >
                 Submit
               </button>
@@ -120,10 +173,44 @@ function GradientHeader({ classid, title, totalQ, secondsLeft, submitted, onSubm
   );
 }
 
+
+
+
+/* ================= Grading Overlay ================= */
+function GradingOverlay() {
+  return (
+    <div className="fixed inset-0 z-[75] grid place-items-center bg-black/50 backdrop-blur-sm px-4">
+      <div className="w-full max-w-sm rounded-2xl border border-black/10 bg-white p-5 shadow-xl">
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 grid place-items-center rounded-xl bg-[#2E5EAA]/10 text-[#2E5EAA]">
+            <Clock className="animate-spin" size={18} />
+          </div>
+          <div>
+            <h3 className="text-base font-bold text-[#2B2D42]">Grading your answers…</h3>
+            <p className="text-xs text-gray-600">Short responses are being scored by AI</p>
+          </div>
+        </div>
+        <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-gray-200/70">
+          <div className="h-full w-1/3 animate-[loadingstripe_1.2s_ease-in-out_infinite] rounded-full bg-gradient-to-r from-[#2E5EAA] to-[#81B29A]" />
+        </div>
+        <style jsx>{`
+          @keyframes loadingstripe {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(300%); }
+          }
+        `}</style>
+      </div>
+    </div>
+  );
+}
+
 /* ================= Page ================= */
 export default function TakeQuizPage() {
   const { classid } = useParams();
   const search = useSearchParams();
+
+  // Class Name
+  const [classLabel, setClassLabel] = useState(null);
 
   // canonical params from Verify page
   const quizId = search.get("quiz"); // server quiz id
@@ -140,6 +227,7 @@ export default function TakeQuizPage() {
 
   // flow
   const [submitted, setSubmitted] = useState(false);
+  const [grading, setGrading] = useState(false);
   const [showFocusOverlay, setShowFocusOverlay] = useState(false);
   const [focusViolations, setFocusViolations] = useState(0);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -149,6 +237,9 @@ export default function TakeQuizPage() {
 
   // answers: { [qIdx]: number|string }
   const [answers, setAnswers] = useState({});
+
+  // result from backend
+  const [apiResult, setApiResult] = useState(null);
 
   // local keys
   const doneKey = `inquiz_done_${quizId}_${seat}`;
@@ -167,35 +258,65 @@ export default function TakeQuizPage() {
     const srcQuestions = Array.isArray(q.questions) ? q.questions : [];
 
     const normQs = srcQuestions.map((qq, i) => {
-      const feType = (qq.type || "").toLowerCase();
+      // prefer explicit questionId from backend; fall back if present
+      const qid = qq.questionId ?? qq.question_id ?? null;
+
+      // 1) Already FE-shaped?
+      const feType = String(qq.type || "").toLowerCase();
       if (feType === "mcq" || feType === "short") {
         if (feType === "mcq") {
           const choices = Array.isArray(qq.choices) ? qq.choices.map(String) : [];
+          const optionIds = Array.isArray(qq.optionIds)
+            ? qq.optionIds.slice()
+            : (Array.isArray(qq.question_options) ? qq.question_options.map(o => Number(o.option_id)) : undefined);
           let ai = Number.isInteger(qq.answerIndex) ? qq.answerIndex : 0;
           if (choices.length >= 2) ai = Math.max(0, Math.min(choices.length - 1, ai));
-          return { type: "mcq", prompt: String(qq.prompt || `Question ${i + 1}`), choices, answerIndex: ai };
+          return {
+            questionId: qid,
+            type: "mcq",
+            prompt: String(qq.prompt || `Question ${i + 1}`),
+            choices,
+            optionIds,
+            answerIndex: ai
+          };
         }
-        return { type: "short", prompt: String(qq.prompt || `Question ${i + 1}`), answer: typeof qq.answer === "string" ? qq.answer : undefined };
+        return {
+          questionId: qid,
+          type: "short",
+          prompt: String(qq.prompt || `Question ${i + 1}`),
+          answer: typeof qq.answer === "string" ? qq.answer : undefined
+        };
       }
 
-      const dbType = (qq.question_type || "").toLowerCase() === "short_answer" ? "short" : "mcq";
+      // 2) DB-shaped fallback
+      const dbType = String(qq.question_type || "").toLowerCase() === "mcq" ? "mcq" : "short";
       const prompt = String(qq.question_text || `Question ${i + 1}`).trim();
 
       if (dbType === "mcq") {
         const choices = Array.isArray(qq.question_options)
-          ? qq.question_options.map((opt) => String(opt.option_text))
-          : [];
-        let answerIndex = -1;
-        if (choices.length > 0 && qq.correct_answer) {
+          ? qq.question_options.map(o => String(o.option_text))
+          : Array.isArray(qq.choices) ? qq.choices.map(String) : [];
+        const optionIds = Array.isArray(qq.question_options)
+          ? qq.question_options.map(o => Number(o.option_id))
+          : Array.isArray(qq.optionIds) ? qq.optionIds.slice() : undefined;
+
+        let answerIndex = Number.isInteger(qq.answerIndex) ? qq.answerIndex : -1;
+        if (answerIndex < 0 && choices.length > 0 && qq.correct_answer) {
           const letters = ["A", "B", "C", "D", "E", "F", "G", "H"];
           const letter = String(qq.correct_answer).trim().toUpperCase();
           const idx = letters.indexOf(letter);
           if (idx >= 0 && idx < choices.length) answerIndex = idx;
         }
-        return { type: "mcq", prompt, choices, answerIndex: answerIndex >= 0 ? answerIndex : 0 };
+        if (answerIndex < 0) answerIndex = 0;
+        return { questionId: qid, type: "mcq", prompt, choices, optionIds, answerIndex };
       }
 
-      return { type: "short", prompt, answer: qq.correct_answer ? String(qq.correct_answer) : undefined };
+      return {
+        questionId: qid,
+        type: "short",
+        prompt,
+        answer: qq.correct_answer ? String(qq.correct_answer) : undefined
+      };
     });
 
     return {
@@ -220,6 +341,39 @@ export default function TakeQuizPage() {
     if (!gate) setInvalid(true);
   }, [classid, quizId, seat]);
 
+
+  /* ---------- Get Class Name from backend ---------- */
+  // Fetch Class Title (instant cache + async refresh)
+  useEffect(() => {
+    if (!API || !classid) return;
+    const cacheKey = `class_meta_${classid}`;
+
+    // show cached instantly if present
+    const cached = sessionStorage.getItem(cacheKey);
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        if (parsed?.label) setClassLabel(parsed.label);
+      } catch { /* ignore */ }
+    }
+
+    // fetch latest quietly in background
+    fetch(`${API}/classes/${classid}/meta`, { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((m) => {
+        if (!m) return;
+        const dept = String(m?.department || "").toUpperCase();
+        const label = m?.course_name
+          ? `BS${dept} – ${m.course_name}`
+          : `Class ${String(classid)}`;
+        setClassLabel(label);
+        sessionStorage.setItem(cacheKey, JSON.stringify({ label, t: Date.now() }));
+      })
+      .catch(() => { });
+  }, [API, classid]);
+
+
+
   /* ---------- fetch quiz from backend ---------- */
   useEffect(() => {
     (async () => {
@@ -230,9 +384,20 @@ export default function TakeQuizPage() {
         if (!res.ok) throw new Error("Quiz not found");
         const j = await res.json();
 
+
         // Normalize BEFORE Zod parse
         const normalized = normalizeServerQuiz(j?.quiz, classid);
+
         const parsed = QuizSchema.parse(normalized);
+        console.table(
+          (parsed.questions || []).map((q, i) => ({
+            i,
+            questionId: q.questionId,
+            type: q.type,
+            choices: Array.isArray(q.choices) ? q.choices.length : 0,
+            optionIds: Array.isArray(q.optionIds) ? q.optionIds.length : null,
+          }))
+        );
 
         // restore autosave
         const saved = JSON.parse(sessionStorage.getItem(`inquiz_run_${quizId}_${seat}`) || "{}");
@@ -264,14 +429,12 @@ export default function TakeQuizPage() {
         if (!API || !quizId) return;
         if (!seat && !email) return;
 
-        const qp = new URLSearchParams({ quiz_id: String(quizId) });
-        if (seat) qp.set("seat_no", seat);
-        if (email) qp.set("email", email);
-
-        const r = await fetch(`${API}/results/?${qp.toString()}`);
-        if (!r.ok) return;
-        const j = await r.json();
-        if (Array.isArray(j?.rows) && j.rows.length > 0) setInvalid(true);
+        const r = await fetch(`${API}/classes/${classid}/student/${seat}/results`);
+        if (r.ok) {
+          const j = await r.json();
+          const attempted = (j?.quizzes || []).some(q => String(q.id) === String(quizId));
+          if (attempted) setInvalid(true);
+        }
       } catch {
         /* fail-open; client guards still apply */
       }
@@ -291,7 +454,6 @@ export default function TakeQuizPage() {
       const remain = Math.max(0, Math.floor((endAtRef.current - Date.now()) / 1000));
       setSecondsLeft(remain);
       if (remain <= 0) {
-        // call submitNow exactly once
         if (!submittingRef.current) submitNow(true);
       }
     };
@@ -350,13 +512,14 @@ export default function TakeQuizPage() {
   }, [submitted, focusViolations]);
 
   /* ---------- helpers ---------- */
-  const pick = (qIdx, val) => setAnswers((a) => ({ ...a, [qIdx]: val }));
+  const pick = (qIdx, val) => {
+    setAnswers((a) => ({ ...a, [qIdx]: val }));
+  };
   const totalQ = quiz?.questions?.length || 0;
 
   const mcqScore = useMemo(() => {
     if (!quiz) return { correct: 0, total: 0 };
-    let total = 0,
-      correct = 0;
+    let total = 0, correct = 0;
     (quiz.questions || []).forEach((q, i) => {
       if (Array.isArray(q?.choices) && typeof q?.answerIndex === "number") {
         total += 1;
@@ -378,6 +541,102 @@ export default function TakeQuizPage() {
     else submitNow(false);
   };
 
+  async function extractHttpError(res) {
+    let msg = `${res.status} ${res.statusText}`;
+    try {
+      const raw = await res.clone().text();
+      if (!raw) return msg;
+      try {
+        const j = JSON.parse(raw);
+        const d = j?.detail ?? j?.message ?? j?.error ?? j?.errors ?? j;
+        if (Array.isArray(d)) {
+          return d.map(e => {
+            const loc = Array.isArray(e.loc) ? e.loc.join(".") : "";
+            const m = e.msg || e.message || String(e);
+            return loc ? `${loc}: ${m}` : m;
+          }).join("\n");
+        }
+        if (d && typeof d === "object") {
+          if (d.msg || d.message) return d.msg || d.message;
+          return JSON.stringify(d, null, 2);
+        }
+        return String(d);
+      } catch {
+        return raw;
+      }
+    } catch {
+      return msg;
+    }
+  }
+
+  // build answers payload (option_id as string for MCQs)
+  const buildAnswers = () => {
+    const rows = (quiz?.questions || []).map((q, i) => {
+      const rawId =
+        q?.questionId ?? q?.question_id ?? q?.id ?? q?.qid ?? q?.pk ?? null;
+
+      const question_id = rawId != null ? Number(rawId) : NaN;
+      const a = answers[i];
+
+
+      if (!Number.isFinite(question_id)) return null; // bad id → filtered out
+
+      if (q?.type === "mcq") {
+        const idx = Number.isFinite(a) ? a : -1;
+        const optId =
+          Array.isArray(q?.optionIds) && idx >= 0 && idx < q.optionIds.length
+            ? q.optionIds[idx]
+            : -1; // explicit blank
+        return { question_id, answer: String(optId) };
+      }
+
+      return { question_id, answer: (a ?? "").toString() };
+    });
+
+    const filtered = rows.filter(Boolean);
+    return filtered;
+  };
+
+  // compute marks (total & obtained with breakdown)
+  function computeMarks(quizObj, apiRes, mcq) {
+    if (!quizObj) return { total: 0, obtained: 0, breakdown: { mcq: { got: 0, total: 0 }, short: { got: 0, total: 0 } } };
+
+    const mcqCount = (quizObj.questions || []).filter(q => Array.isArray(q.choices)).length;
+    const shortCount = (quizObj.questions || []).filter(q => !Array.isArray(q.choices)).length;
+
+    const mcqTotalMarks = mcqCount * MCQ_MARKS;
+    const shortTotalMarks = shortCount * SHORT_MARKS;
+    const totalMarks = mcqTotalMarks + shortTotalMarks;
+
+    let obtainedFromAPI = null;
+    if (apiRes?.details && Array.isArray(apiRes.details)) {
+      obtainedFromAPI = apiRes.details.reduce((s, d) => s + (Number(d.score) || 0), 0);
+    }
+
+    const mcqObtained = (mcq?.correct || 0) * MCQ_MARKS;
+
+    let shortObtained = 0;
+    if (apiRes?.details && Array.isArray(apiRes.details)) {
+      const shortIds = (quizObj.questions || [])
+        .map((q) => (!Array.isArray(q.choices) ? String(q.questionId || q.question_id || "") : null))
+        .filter(Boolean);
+      shortObtained = apiRes.details
+        .filter(d => shortIds.includes(String(d.question_id)))
+        .reduce((s, d) => s + (Number(d.score) || 0), 0);
+    }
+
+    const obtained = obtainedFromAPI != null ? obtainedFromAPI : mcqObtained + shortObtained;
+
+    return {
+      total: totalMarks,
+      obtained,
+      breakdown: {
+        mcq: { got: mcqObtained, total: mcqTotalMarks, correct: mcq?.correct || 0, count: mcqCount },
+        short: { got: shortObtained, total: shortTotalMarks, count: shortCount, perQ: SHORT_MARKS }
+      }
+    };
+  }
+
   /* ---------- submit to backend ---------- */
   const submitNow = async (auto = false) => {
     if (submittingRef.current) return;
@@ -385,80 +644,48 @@ export default function TakeQuizPage() {
 
     setShowConfirm(false);
     setSubmitted(true);
-
+    setGrading(true); // show grading overlay
     try {
-      const usedSec = Math.max(0, (quiz?.meta?.durationMin ?? 20) * 60 - (secondsLeft ?? 0));
+      const payload = {
+        quiz_id: Number(quizId),
+        class_id: Number(classid),
+        seat_no: String(seat || ""),
+        email: String(email || ""),
+        answers: buildAnswers(),
+      };
 
-      // what kinds of questions exist in this quiz?
-      const hasMcq = (quiz?.questions || []).some(q => Array.isArray(q?.choices));
-      const hasShort = (quiz?.questions || []).some(q => !Array.isArray(q?.choices));
 
-      const percent =
-        mcqScore.total > 0 ? Math.round((mcqScore.correct / mcqScore.total) * 100) : null;
 
-      if (API && quizId) {
-        const answersJson = {
-          version: 1,
-          answers,
-          duration_used_s: usedSec,
-          auto_submitted: !!auto,
-          quiz_type: quiz?.meta?.type || null, // optional, for clarity
-        };
-        if (hasMcq) answersJson.mcq = mcqScore;                           // only if MCQs exist
-        if (hasShort) answersJson.short = {
-          total:
-            (quiz?.questions || []).filter(q => !Array.isArray(q?.choices)).length
-        }; // minimal short meta; expand later if you auto-grade shorts
-
-        const payload = {
-          quiz_id: Number(quizId),
-          class_id: Number(classid),
-          seat_no: seat || null,
-          email: email || null,
-          score: percent,
-          //          answers_json: {
-          //            version: 1,
-          //            answers,
-          //            mcq: mcqScore,
-          //            duration_used_s: usedSec,
-          //            auto_submitted: !!auto,
-          //          },
-          answers_json: answersJson,
-        };
-
-        const res = await fetch(`${API}/results`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-        if (!res.ok) {
-          const j = await res.json().catch(() => ({}));
-          throw new Error(j?.detail || "Submit failed");
-        }
+      const res = await fetch(`${API}/submit_quiz`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const msg = await extractHttpError(res);
+        throw new Error(msg);
       }
-
-      // local lock + clear autosave + clear endAt
+      const result = await res.json();
+      setApiResult(result);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setGrading(false); // hide overlay; effect below opens modal when apiResult is set
+      submittingRef.current = false;
       sessionStorage.setItem(doneKey, "1");
       sessionStorage.removeItem(`inquiz_run_${quizId}_${seat}`);
       sessionStorage.removeItem(endKey);
-    } catch (e) {
-      console.error(e);
-      // still set local done to discourage double-submits
-      sessionStorage.setItem(doneKey, "1");
-    } finally {
-      // let results modal show even on error
-      submittingRef.current = false;
     }
   };
 
   /* ---------- post-submit result modal ---------- */
   const [showResults, setShowResults] = useState(false);
   useEffect(() => {
-    if (submitted) {
-      const t = setTimeout(() => setShowResults(true), 220);
-      return () => clearTimeout(t);
+    // open only after API result arrives (AI grading done)
+    if (submitted && apiResult && !grading) {
+      setShowResults(true);
     }
-  }, [submitted]);
+  }, [submitted, apiResult, grading]);
 
   /* ---------- guards ---------- */
   if (invalid) {
@@ -473,6 +700,8 @@ export default function TakeQuizPage() {
   }
   if (!quiz) return <LoadingScreen />;
 
+  const marks = computeMarks(quiz, apiResult, mcqScore);
+
   /* ================= Render ================= */
   return (
     <div
@@ -481,7 +710,7 @@ export default function TakeQuizPage() {
       onCut={(e) => e.preventDefault()}
     >
       <GradientHeader
-        classid={classid}
+        classid={classLabel || classid}
         title={quiz.title || "Quiz"}
         totalQ={totalQ}
         secondsLeft={secondsLeft}
@@ -515,8 +744,12 @@ export default function TakeQuizPage() {
             score={mcqScore}
             totalQ={totalQ}
             durationUsed={Math.max(0, (quiz?.meta?.durationMin ?? 20) * 60 - (secondsLeft ?? 0))}
+            marks={marks}
           />
         )}
+
+        {/* grading overlay (after submit, before result) */}
+        {submitted && grading && <GradingOverlay />}
 
         {/* one-question-per-page */}
         {!submitted && (
@@ -537,8 +770,7 @@ export default function TakeQuizPage() {
                       return (
                         <li key={ci}>
                           <label
-                            className={`flex items-center gap-3 rounded-xl border px-4 py-3 cursor-pointer transition ${active ? "border-[#2E5EAA] bg-[#F3F8FF]" : "border-gray-200 bg-white hover:bg-gray-50"
-                              }`}
+                            className={`flex items-center gap-3 rounded-xl border px-4 py-3 cursor-pointer transition ${active ? "border-[#2E5EAA] bg-[#F3F8FF]" : "border-gray-200 bg-white hover:bg-gray-50"}`}
                           >
                             <input
                               type="radio"
@@ -557,7 +789,7 @@ export default function TakeQuizPage() {
                 ) : (
                   <textarea
                     value={String(answers[idx] ?? "")}
-                    onChange={(e) => pick(idx, e.target.value)}
+                    onChange={(e) => { pick(idx, e.target.value); }}
                     onPaste={handlePasteBlock}
                     placeholder="Type Your Answer Here."
                     className="w-full min-h-[140px] rounded-xl border border-gray-300/70 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-[#2E5EAA]/20"
@@ -653,60 +885,115 @@ export default function TakeQuizPage() {
   );
 }
 
-/* ================= Result Modal ================= */
-function ResultModal({ quizTitle, score, totalQ, durationUsed }) {
-  const percent = score.total > 0 ? Math.round((score.correct / score.total) * 100) : null;
+/* ================= Result Modal (responsive) ================= */
+function ResultModal({ quizTitle, score, totalQ, durationUsed, marks }) {
+  const percentByMarks = marks.total > 0 ? Math.round((marks.obtained / marks.total) * 100) : null;
+
   const remark = (() => {
-    const p = percent ?? 0;
+    const p = percentByMarks ?? 0;
     if (p >= 90) return "Outstanding! 🎉";
     if (p >= 75) return "Great job! 🙌";
     if (p >= 60) return "Good effort! 👍";
     if (p >= 40) return "Keep practicing! 💪";
     return "Don’t give up — you’ve got this! 🌱";
   })();
+
   const used = Math.max(0, durationUsed || 0);
   const mins = Math.floor(used / 60);
   const secs = used % 60;
 
+  const progressStyle = {
+    width: `${Math.max(0, Math.min(100, percentByMarks || 0))}%`,
+    background: progressHex(percentByMarks || 0),
+  };
+
   return (
-    <div className="fixed inset-0 z-[80] grid place-items-center bg-black/50 backdrop-blur-sm">
-      <div className="w-[92%] max-w-lg rounded-2xl border border-black/10 shadow-2xl overflow-hidden">
-        <div className="relative bg-gradient-to-r from-[#5C9BCF] via-[#8CB8E2] to-[#7FAF9D] p-5">
-          <h3 className="text-white text-xl font-bold">{quizTitle || "Quiz"} • Results</h3>
-          <p className="text-white/90 text-sm">Your submission has been recorded.</p>
+    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 backdrop-blur-sm px-3">
+      {/* modal shell */}
+      <div className="w-full max-w-[44rem] max-h-[90vh] overflow-y-auto rounded-2xl border border-black/10  shadow-2xl">
+        {/* header */}
+        <div className="sticky top-0 z-10 bg-gradient-to-r from-[#5C9BCF] via-[#8CB8E2] to-[#7FAF9D] p-4 md:p-6">
+          <h3 className="text-white text-lg md:text-xl font-bold">
+            {quizTitle || "Quiz"} • Results
+          </h3>
+          <p className="text-white/90 text-xs md:text-sm">Your submission has been recorded.</p>
         </div>
 
-        <div className="p-6 space-y-4 bg-white">
-          <div className="rounded-xl border border-black/5 bg-white p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Auto-graded</p>
-                <p className="text-2xl font-extrabold text-[#2B2D42]">
-                  {score ? `${score.correct} / ${score.total}` : "—"}
-                </p>
+        {/* body */}
+        <div className="p-4 md:p-6 space-y-4 md:space-y-5 bg-white">
+          {/* top stats */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+            <div className="rounded-xl border border-black/5 bg-white p-3 sm:p-4">
+              <p className="text-[11px] sm:text-xs uppercase tracking-wide text-gray-500">Total Marks</p>
+              <p className="mt-1 text-xl sm:text-2xl font-extrabold text-[#2B2D42]">{marks.total}</p>
+              <p className="text-[11px] sm:text-xs text-gray-500">MCQ {MCQ_MARKS} each • Short {SHORT_MARKS} each</p>
+            </div>
+
+            <div className="rounded-xl border border-black/5 bg-white p-3 sm:p-4">
+              <p className="text-[11px] sm:text-xs uppercase tracking-wide text-gray-500">Obtained</p>
+              <p className="mt-1 text-xl sm:text-2xl font-extrabold text-[#2B2D42]">{marks.obtained}</p>
+              <div className="mt-2 h-2 w-full bg-gray-200/70 rounded-full overflow-hidden">
+                <div className="h-full rounded-full transition-all" style={progressStyle} />
               </div>
-              <div className="text-right">
-                <p className="text-sm text-gray-600">Accuracy</p>
-                <p className="text-2xl font-extrabold" style={{ color: progressHex(percent ?? 0) }}>
-                  {percent != null ? `${percent}%` : "—"}
-                </p>
-              </div>
+            </div>
+
+            <div className="rounded-xl border border-black/5 bg-white p-3 sm:p-4">
+              <p className="text-[11px] sm:text-xs uppercase tracking-wide text-gray-500">Percentage</p>
+              <p
+                className="mt-1 text-xl sm:text-2xl font-extrabold"
+                style={{ color: progressHex(percentByMarks ?? 0) }}
+              >
+                {percentByMarks != null ? `${percentByMarks}%` : "—"}
+              </p>
+              <p className="text-[11px] sm:text-xs text-gray-500">Auto-graded items included</p>
             </div>
           </div>
 
-          <div className="rounded-xl border border-black/5 bg-white p-4">
-            <p className="text-sm text-gray-600">Time used</p>
-            <p className="text-lg font-semibold text-[#2B2D42]">
-              {mins}m {secs}s
-            </p>
+          {/* breakdown cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+            <div className="rounded-xl border border-black/5 bg-[#F7FAFF] p-3 sm:p-4">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm font-semibold text-[#2B2D42]">MCQ</p>
+                <span className="text-[11px] sm:text-xs rounded-full px-2 py-0.5 bg-white border border-black/5">
+                  {marks.breakdown.mcq.correct} correct / {marks.breakdown.mcq.count}
+                </span>
+              </div>
+              <p className="mt-2 text-base sm:text-lg font-bold text-[#2B2D42]">
+                {marks.breakdown.mcq.got} / {marks.breakdown.mcq.total} marks
+              </p>
+              <p className="text-[11px] sm:text-xs text-gray-600 mt-1">Each MCQ is {MCQ_MARKS} mark</p>
+            </div>
+
+            <div className="rounded-xl border border-black/5 bg-[#F7FAFF] p-3 sm:p-4">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm font-semibold text-[#2B2D42]">Short Answers</p>
+                <span className="text-[11px] sm:text-xs rounded-full px-2 py-0.5 bg-white border border-black/5">
+                  {marks.breakdown.short.count} questions
+                </span>
+              </div>
+              <p className="mt-2 text-base sm:text-lg font-bold text-[#2B2D42]">
+                {marks.breakdown.short.got} / {marks.breakdown.short.total} marks
+              </p>
+              <p className="text-[11px] sm:text-xs text-gray-600 mt-1">Up to {SHORT_MARKS} marks each</p>
+            </div>
           </div>
 
-          <div className="rounded-2xl border border-black/5 bg-[#F7FAFF] p-4">
-            <p className="text-sm font-semibold text-[#2B2D42]">Remarks</p>
-            <p className="text-gray-700 mt-1">{remark}</p>
+          {/* time + remarks */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+            <div className="rounded-xl border border-black/5 bg-white p-3 sm:p-4">
+              <p className="text-sm text-gray-600">Time used</p>
+              <p className="text-lg font-semibold text-[#2B2D42]">
+                {mins}m {secs}s
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-black/5 bg-white p-3 sm:p-4">
+              <p className="text-sm font-semibold text-[#2B2D42]">Remarks</p>
+              <p className="text-gray-700 mt-1 text-sm">{remark}</p>
+            </div>
           </div>
 
-          <p className="text-xs text-gray-500">
+          <p className="text-[11px] sm:text-xs text-gray-500">
             This result card stays open. You can close the tab when you’re done.
           </p>
         </div>

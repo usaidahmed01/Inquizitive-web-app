@@ -1,5 +1,3 @@
-
-
 "use client";
 
 import { useState, useMemo, useEffect, useRef } from "react";
@@ -120,15 +118,22 @@ export default function JoinClassPage() {
 
       if (!r.ok) {
         const j = await r.json().catch(() => ({}));
-        const msg = j?.detail || "Failed to submit.";
+        const msg = (j && j.detail) || "Failed to submit.";
+
         if (r.status === 409) {
-          toast.error("You already requested / enrolled for this class.", {
-            position: "top-center",
-          });
+          if (String(msg).toLowerCase().includes("belongs to a different student")) {
+            toast.error(
+              "This seat number is already claimed by another student.\nUse your own seat number or contact the instructor.",
+              { position: "top-center" }
+            );
+          } else {
+            // your original case
+            toast.error("You already requested / enrolled for this class.", {
+              position: "top-center",
+            });
+          }
         } else if (r.status === 422) {
-          toast.error("Please enter a valid email address.", {
-            position: "top-center",
-          });
+          toast.error("Please enter a valid email address.", { position: "top-center" });
         } else if (r.status === 404) {
           toast.error("Class not found.", { position: "top-center" });
         } else {
@@ -204,13 +209,12 @@ export default function JoinClassPage() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g., Ali Raza"
-                className={`w-full px-4 py-3 rounded-lg border outline-none focus:ring-2 ${
-                  name.length === 0
+                className={`w-full px-4 py-3 rounded-lg border outline-none focus:ring-2 ${name.length === 0
                     ? "border-gray-200 focus:ring-[#2E5EAA]"
                     : nameCheck.success
-                    ? "border-green-300 focus:ring-green-400"
-                    : "border-red-300 focus:ring-red-400"
-                }`}
+                      ? "border-green-300 focus:ring-green-400"
+                      : "border-red-300 focus:ring-red-400"
+                  }`}
                 autoComplete="name"
                 inputMode="text"
                 aria-invalid={name.length > 0 && !nameCheck.success}
@@ -238,13 +242,12 @@ export default function JoinClassPage() {
                 value={seat}
                 onChange={(e) => setSeat(e.target.value.toUpperCase())}
                 placeholder="B23110006177"
-                className={`w-full px-4 py-3 rounded-lg border outline-none focus:ring-2 ${
-                  seat.length === 0
+                className={`w-full px-4 py-3 rounded-lg border outline-none focus:ring-2 ${seat.length === 0
                     ? "border-gray-200 focus:ring-[#2E5EAA]"
                     : seatCheck.success
-                    ? "border-green-300 focus:ring-green-400"
-                    : "border-red-300 focus:ring-red-400"
-                }`}
+                      ? "border-green-300 focus:ring-green-400"
+                      : "border-red-300 focus:ring-red-400"
+                  }`}
                 maxLength={12}
                 inputMode="text"
                 autoComplete="off"
@@ -268,13 +271,12 @@ export default function JoinClassPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value.trim())}
                 placeholder="you@university.com"
-                className={`w-full px-4 py-3 rounded-lg border outline-none focus:ring-2 ${
-                  email.length === 0
+                className={`w-full px-4 py-3 rounded-lg border outline-none focus:ring-2 ${email.length === 0
                     ? "border-gray-200 focus:ring-[#2E5EAA]"
                     : emailCheck.success
-                    ? "border-green-300 focus:ring-green-400"
-                    : "border-red-300 focus:ring-red-400"
-                }`}
+                      ? "border-green-300 focus:ring-green-400"
+                      : "border-red-300 focus:ring-red-400"
+                  }`}
                 inputMode="email"
                 autoComplete="email"
                 aria-invalid={email.length > 0 && !emailCheck.success}
@@ -291,11 +293,10 @@ export default function JoinClassPage() {
             <button
               type="submit"
               disabled={!canSubmit}
-              className={`w-full py-3 rounded-lg font-semibold transition ${
-                canSubmit
+              className={`w-full py-3 rounded-lg font-semibold transition ${canSubmit
                   ? "bg-[#2E5EAA] hover:bg-[#264d8b] text-white shadow-md"
                   : "bg-gray-200 text-gray-500 cursor-not-allowed"
-              }`}
+                }`}
             >
               {submitting ? "Submitting..." : "Join Class"}
             </button>

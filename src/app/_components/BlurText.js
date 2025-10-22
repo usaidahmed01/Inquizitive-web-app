@@ -30,7 +30,7 @@ const BlurText = ({
   stepDuration = 0.35,
   /** NEW: highlight a word or array of words (match by token) */
   highlight, // string | string[]
-  highlightClassName = 'text-[#2E5EAA]', // your theme primary
+  highlightClassName = 'text-[#2E5EAA]',
 }) => {
   const elements = animateBy === 'words' ? text.split(' ') : text.split('');
   const [inView, setInView] = useState(false);

@@ -52,29 +52,37 @@ export default function VerifyPage() {
     enableRef.current = enabled;
   }, []);
 
-  // Class Name
-  useEffect(() => {
-    if (!API || !classid) return;
-    const cacheKey = `class_meta_${classid}`;
-    const cached = sessionStorage.getItem(cacheKey);
-    if (cached) {
-      try { setClassLabel(JSON.parse(cached)?.label || null); } catch { }
-    }
-    (async () => {
-      try {
-        const r = await fetch(`${API}/classes/${classid}/meta`);
-        if (!r.ok) return; // fallback stays as ID
-        const m = await r.json();
-        // build a nice label (adjust to taste)
-        const dept = String(m?.department || "").toUpperCase();
-        const label = m?.course_name
-          ? `BS${dept} - ${m.course_name}`
-          : `Class ${String(classid)}`;
-        setClassLabel(label);
-        sessionStorage.setItem(cacheKey, JSON.stringify({ label, t: Date.now() }));
-      } catch { }
-    })();
-  }, [API, classid]);
+
+
+  // Class Title
+useEffect(() => {
+  if (!API || !classid) return;
+  const cacheKey = `class_meta_${classid}`;
+
+  // show cached instantly if present
+  const cached = sessionStorage.getItem(cacheKey);
+  if (cached) {
+    try {
+      const parsed = JSON.parse(cached);
+      if (parsed?.label) setClassLabel(parsed.label);
+    } catch { /* ignore */ }
+  }
+
+  // fetch latest in background
+  fetch(`${API}/classes/${classid}/meta`, { cache: "no-store" })
+    .then((r) => (r.ok ? r.json() : null))
+    .then((m) => {
+      if (!m) return;
+      const dept = String(m?.department || "").toUpperCase();
+      const label = m?.course_name
+        ? `BS${dept} – ${m.course_name}`
+        : `Class ${String(classid)}`;
+      setClassLabel(label);
+      sessionStorage.setItem(cacheKey, JSON.stringify({ label, t: Date.now() }));
+    })
+    .catch(() => {});
+}, [API, classid]);
+
 
   // validate BOTH fields
   const seatCheck = VerifySchema.shape.seat.safeParse(seat);

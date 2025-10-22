@@ -1,4 +1,3 @@
-// src/app/lib/ai.js (JS)
 import { getSessionToken } from "./auth";
 
 const API_BASE =
