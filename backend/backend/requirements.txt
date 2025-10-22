@@ -37,3 +37,4 @@ pillow
 pdfplumber
 pdf2image
 pytesseract
+requests
