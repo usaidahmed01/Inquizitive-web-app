@@ -173,7 +173,7 @@ export default function LoginPage() {
             style={{ minWidth: 320 }}
           >
             <div className="no-tilt mb-4 flex h-24 w-full items-center justify-center rounded-lg sm:h-32">
-              <Image src="/lOGO.svg" alt="logo" width={isSmallScreen ? 200 : 250} height={isSmallScreen ? 200 : 250} priority />
+              <Image src="/mainLogo.svg" alt="logo" width={isSmallScreen ? 200 : 250} height={isSmallScreen ? 200 : 250} priority />
             </div>
 
             <div className="mb-5 flex items-center justify-center gap-2 sm:mb-6">
