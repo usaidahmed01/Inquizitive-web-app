@@ -38,3 +38,4 @@ pdfplumber
 pdf2image
 pytesseract
 requests
+python-multipart
